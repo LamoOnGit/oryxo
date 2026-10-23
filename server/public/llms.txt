@@ -1,0 +1,45 @@
+# Oryxo.eu
+
+> Oryxo.eu est un jeu .io de tanks multijoueur gratuit, jouable directement dans le navigateur (PC, Mac, Android, iOS), sans téléchargement ni installation. Langue : français.
+
+## En bref
+- Genre : jeu .io, jeu de tanks vu du dessus, Battle Royale, action multijoueur en ligne
+- Prix : gratuit (aucun achat avec de l'argent réel)
+- Plateformes : navigateur web sur ordinateur, tablette et téléphone
+- Joueurs : jusqu'à 12 par partie
+- Adresse : https://oryxo.eu/
+
+## Modes de jeu
+- Battle Royale classé : jusqu'à 12 vrais joueurs (aucun bot), en solo, duo, trio ou squad ; la zone se resserre, le dernier joueur ou la dernière équipe debout gagne ; les résultats font gagner ou perdre des PR.
+- Arène : arène en ligne de 12 joueurs avec réapparition infinie.
+- Multijoueur entre amis : rooms privées avec un code à partager.
+- Entraînement : jeu libre, arène ou Battle Royale contre des bots.
+
+## Progression et social
+- Rangs : Rookie I-III, Challenger I-III, Titan I-III, puis Céleste (rang ultime) ; gains de PR de plus en plus faibles et pertes de plus en plus fortes en montant.
+- Classement mondial des meilleurs joueurs.
+- Système d'amis : ajout par pseudo, invitations, groupes pour jouer en duo, trio ou squad dans la même équipe.
+- Armes : pistolet, sniper, shotgun, SMG, couteau, lance-roquettes, laser, boomerang. Power-ups et classes (Phénix, Fantôme, Assassin, Tank…) avec un pouvoir ultime.
+
+## Questions fréquentes
+
+### Oryxo.eu est-il gratuit ?
+Oui. Oryxo.eu est un jeu .io 100 % gratuit, sans abonnement ni achat avec de l'argent réel. Les pièces se gagnent uniquement en jouant et sont remises à zéro à chaque partie.
+
+### Faut-il télécharger quelque chose pour jouer ?
+Non. Le jeu se lance directement dans le navigateur (Chrome, Safari, Firefox, Edge) sur ordinateur, tablette ou téléphone. Il suffit d'ouvrir oryxo.eu.
+
+### Peut-on jouer à Oryxo.eu sur mobile ?
+Oui, le jeu fonctionne sur téléphone et tablette avec des commandes tactiles. Sur ordinateur, tu peux aussi utiliser ton téléphone comme manette.
+
+### Comment jouer avec mes amis ?
+Ajoute tes amis avec leur pseudo, puis invite-les dans ton groupe pour jouer ensemble en duo, trio ou squad dans le Battle Royale classé. Tu peux aussi créer une room privée en multijoueur et partager le code.
+
+### Comment fonctionne le classement ?
+Chaque partie de Battle Royale classé te fait gagner ou perdre des PR selon ta place et tes éliminations. Il y a 10 paliers : Rookie I à III, Challenger I à III, Titan I à III, puis Céleste, le rang ultime. Plus tu montes, plus c'est difficile.
+
+### Quelles sont les commandes ?
+Déplace-toi avec ZQSD (ou WASD), vise à la souris et tire avec le clic ou Espace. Les touches 1, 2 et 3 utilisent tes bonus, E déclenche l'ultime de ta classe et B ouvre la boutique. Toutes les touches sont personnalisables.
+
+### À quoi ressemble Oryxo.eu ?
+C'est un jeu de tanks vu du dessus dans l'esprit des jeux .io comme diep.io : des parties rapides, des armes à débloquer (sniper, shotgun, lance-roquettes, laser…), des power-ups, des classes avec un ultime et une zone qui se resserre en Battle Royale.

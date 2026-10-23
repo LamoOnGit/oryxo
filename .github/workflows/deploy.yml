@@ -1,0 +1,81 @@
+# Oryxo : à chaque push sur main qui touche le jeu ou le serveur, GitHub construit le jeu
+# puis l'envoie sur le VPS (sauvegarde .bak, redémarrage d'orbit, retour arrière automatique si ça plante).
+# Bouton manuel : onglet Actions -> "Déployer sur oryxo.eu" -> Run workflow.
+# Secrets nécessaires (Settings -> Secrets and variables -> Actions) : VPS_SSH_KEY et VPS_KNOWN_HOSTS,
+# donnés par deploy/setup-vps.sh. Sans eux, le jeu est construit mais pas envoyé.
+name: Déployer sur oryxo.eu
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'server/**'
+      - 'build.py'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Installer esbuild
+        run: npm ci
+
+      - name: Construire le jeu
+        run: python3 build.py
+
+      - name: Vérifier
+        run: |
+          node --check server/server.js
+          test -s dist/index-oryxo.html
+          ! grep -q 'window.__g' dist/index-oryxo.html
+
+      - name: Préparer l'envoi
+        run: |
+          mkdir -p out/public
+          cp dist/index-oryxo.html out/index.html
+          cp server/server.js out/server.js
+          cp -r server/public/. out/public/
+          rm -f out/public/index.html
+          tar -czf deploy.tgz -C out .
+          ls -la out
+
+      - name: Garder une copie du jeu construit
+        uses: actions/upload-artifact@v4
+        with:
+          name: index-oryxo
+          path: dist/index-oryxo.html
+          retention-days: 30
+
+      - name: Envoyer sur le VPS
+        env:
+          KEY: ${{ secrets.VPS_SSH_KEY }}
+          KNOWN: ${{ secrets.VPS_KNOWN_HOSTS }}
+          HOST: ${{ vars.VPS_HOST || '57.129.178.141' }}
+        run: |
+          if [ -z "$KEY" ] || [ -z "$KNOWN" ]; then
+            echo "::warning::Secrets VPS_SSH_KEY / VPS_KNOWN_HOSTS absents : le jeu est construit mais PAS envoyé sur le VPS."
+            exit 0
+          fi
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/oryxo && chmod 600 ~/.ssh/oryxo
+          printf '%s\n' "$KNOWN" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/oryxo -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=20 ubuntu@"$HOST" < deploy.tgz

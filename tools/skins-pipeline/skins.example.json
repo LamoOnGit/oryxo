@@ -1,0 +1,167 @@
+[
+  {
+    "id": "carbone",
+    "name": "Carbone",
+    "rarity": "Rare",
+    "animated": false,
+    "file": "01_carbone.png",
+    "spritesheet": null,
+    "frames": 1,
+    "frame_ms": null,
+    "size": 512
+  },
+  {
+    "id": "camo_jungle",
+    "name": "Camo Jungle",
+    "rarity": "Rare",
+    "animated": false,
+    "file": "02_camo_jungle.png",
+    "spritesheet": null,
+    "frames": 1,
+    "frame_ms": null,
+    "size": 512
+  },
+  {
+    "id": "arctique",
+    "name": "Arctique",
+    "rarity": "Rare",
+    "animated": false,
+    "file": "03_arctique.png",
+    "spritesheet": null,
+    "frames": 1,
+    "frame_ms": null,
+    "size": 512
+  },
+  {
+    "id": "desert_dore",
+    "name": "Désert Doré",
+    "rarity": "Épique",
+    "animated": false,
+    "file": "04_desert_dore.png",
+    "spritesheet": null,
+    "frames": 1,
+    "frame_ms": null,
+    "size": 512
+  },
+  {
+    "id": "bonbon",
+    "name": "Bonbon",
+    "rarity": "Épique",
+    "animated": false,
+    "file": "05_bonbon.png",
+    "spritesheet": null,
+    "frames": 1,
+    "frame_ms": null,
+    "size": 512
+  },
+  {
+    "id": "royal",
+    "name": "Royal",
+    "rarity": "Épique",
+    "animated": false,
+    "file": "06_royal.png",
+    "spritesheet": null,
+    "frames": 1,
+    "frame_ms": null,
+    "size": 512
+  },
+  {
+    "id": "citrouille",
+    "name": "Citrouille",
+    "rarity": "Épique",
+    "animated": true,
+    "file": "07_citrouille.gif",
+    "spritesheet": "07_citrouille_spritesheet.png",
+    "frames": 32,
+    "frame_ms": 40,
+    "size": 512
+  },
+  {
+    "id": "neon_cyber",
+    "name": "Néon Cyber",
+    "rarity": "Légendaire",
+    "animated": true,
+    "file": "08_neon_cyber.gif",
+    "spritesheet": "08_neon_cyber_spritesheet.png",
+    "frames": 32,
+    "frame_ms": 40,
+    "size": 512
+  },
+  {
+    "id": "magma",
+    "name": "Magma",
+    "rarity": "Légendaire",
+    "animated": true,
+    "file": "09_magma.gif",
+    "spritesheet": "09_magma_spritesheet.png",
+    "frames": 32,
+    "frame_ms": 40,
+    "size": 512
+  },
+  {
+    "id": "toxique",
+    "name": "Toxique",
+    "rarity": "Légendaire",
+    "animated": true,
+    "file": "10_toxique.gif",
+    "spritesheet": "10_toxique_spritesheet.png",
+    "frames": 32,
+    "frame_ms": 40,
+    "size": 512
+  },
+  {
+    "id": "dragon_dor",
+    "name": "Dragon d'Or",
+    "rarity": "Légendaire",
+    "animated": true,
+    "file": "11_dragon_dor.gif",
+    "spritesheet": "11_dragon_dor_spritesheet.png",
+    "frames": 32,
+    "frame_ms": 40,
+    "size": 512
+  },
+  {
+    "id": "fantome",
+    "name": "Fantôme",
+    "rarity": "Légendaire",
+    "animated": true,
+    "file": "12_fantome.gif",
+    "spritesheet": "12_fantome_spritesheet.png",
+    "frames": 32,
+    "frame_ms": 40,
+    "size": 512
+  },
+  {
+    "id": "galaxie",
+    "name": "Galaxie",
+    "rarity": "Mythique",
+    "animated": true,
+    "file": "13_galaxie.gif",
+    "spritesheet": "13_galaxie_spritesheet.png",
+    "frames": 32,
+    "frame_ms": 40,
+    "size": 512
+  },
+  {
+    "id": "tempete",
+    "name": "Tempête",
+    "rarity": "Mythique",
+    "animated": true,
+    "file": "14_tempete.gif",
+    "spritesheet": "14_tempete_spritesheet.png",
+    "frames": 32,
+    "frame_ms": 40,
+    "size": 512
+  },
+  {
+    "id": "prisme",
+    "name": "Prisme",
+    "rarity": "Mythique",
+    "animated": true,
+    "file": "15_prisme.gif",
+    "spritesheet": "15_prisme_spritesheet.png",
+    "frames": 32,
+    "frame_ms": 40,
+    "size": 512
+  }
+]

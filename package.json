@@ -1,0 +1,11 @@
+{
+  "name": "oryxo",
+  "private": true,
+  "description": "Oryxo.eu — jeu .io de tanks multijoueur",
+  "scripts": {
+    "build": "python3 build.py"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

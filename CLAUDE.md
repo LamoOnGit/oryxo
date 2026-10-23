@@ -13,7 +13,7 @@ Malo débute en dev : explique-lui les choses **en français, simplement, une é
 | `dist/index-oryxo.html` | Dernière version construite (celle qu'on déploie) |
 | `server/server.js` | (= `/opt/orbit/server.js`) Serveur Node (http + WebSocket `ws`) : sert `public/`, rooms, file d'attente classée, social |
 | `server/public/` | = `/opt/orbit/public` sur le VPS. Fichiers statiques à côté du jeu : `skins/*.webp`, favicon, og-image, robots.txt, sitemap.xml, llms.txt, manifest, pages légales (`mentions-legales.html`, `cgv.html`, `confidentialite.html` + `legal.css`) |
-| `sql/` | Scripts Supabase dans l'ordre où ils ont été donnés (01 → 06). `verification.sql` affiche ✅/❌ pour chacun (à lancer dans le SQL Editor). Tous déjà lancés sauf peut-être `05-classement-fix.sql` (06 lancé par Malo le 23/10) |
+| `sql/` | Scripts Supabase dans l'ordre où ils ont été donnés (01 → 06). `verification.sql` affiche ✅/❌ pour chacun (à lancer dans le SQL Editor). Le 23/10, la vérification montrait le 04 non installé : ordre sûr = 05 puis 04 puis 06 (le 04 utilise avatar_url et crown, ajoutés par le 05) |
 | `deploy/` | `setup-vps.sh` (installation unique sur le VPS) et `oryxo-deploy.sh` (script qui reçoit et installe une version, copié dans `/usr/local/sbin/oryxo-deploy`) |
 | `.github/workflows/deploy.yml` | Déploiement automatique : chaque push sur `main` qui touche `src/`, `server/`, `build.py` ou `package*.json` construit le jeu et l'envoie sur le VPS |
 | `package.json` | esbuild 0.28.2 fixé (`npm ci` puis `python3 build.py`) |

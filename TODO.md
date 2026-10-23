@@ -36,7 +36,7 @@ Ordre conseillé : **1 → 2 → 3**, puis le reste selon ses envies.
 - Le bouton « SE CONNECTER » est coupé dans la grille des boutons du haut.
 - Un losange décoratif (`.shape-star`) passe par-dessus le bouton « CLASSEMENT ».
 
-## 6. Système de bannissement — FAIT le 23/10 (lancer sql/06-bannissement.sql)
+## 6. Système de bannissement — FAIT le 23/10 (SQL 06 lancé ; actif après le prochain deploy du serveur)
 - Colonnes `banned_until timestamptz` et `ban_reason text` dans `profiles` (modifiables seulement par le service_role).
 - `server.js` vérifie le ban à la connexion (`/mm`, `/social`, tickets classés) et refuse avec la raison et la date de fin.
 - Le jeu affiche un message clair au joueur banni.

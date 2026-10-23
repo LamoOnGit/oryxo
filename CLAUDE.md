@@ -143,6 +143,15 @@ En BR classé solo (2 joueurs, hôte serveur), acheté en partie : il part (~400
 - Boutique de l'accueil = **uniquement les skins** (achat réel, Stripe). Les skins ne s'achètent **jamais en partie** : l'onglet Skins est masqué dans toute autre boutique (`#shop:not(.skins-only) .shtab[data-sh="skins"]`), et la boutique en partie s'ouvre sur Armes.
 - Boutique en partie : se ferme avec B, avec le bouton « Fermer », ou **en cliquant / touchant en dehors du panneau** (`oxShopOutside`, ne déclenche pas de tir).
 
+## Confort de jeu (ajouté le 23/10/2026)
+
+- **Écran « Tourne ton téléphone »** : tant qu'il est affiché, la protection d'apparition du joueur ne s'use pas (30 s max par vie, `holdT`). L'invité l'envoie dans ses entrées (`{t:'i', h:1}`), l'hôte la maintient (`holdAt`). Avant, on se faisait tuer derrière cet écran.
+- **Apparition** : `En()` refuse les points dans un nuage ou à moins de 160 px (`oxNearCloud`, protégé par `try` car les nuages n'existent pas encore au tout premier chargement). Avant, ~1 apparition sur 10 tombait dans un nuage. `SPAWN_PROTECT` passé de 0,6 à 2,5 s.
+- **Boutique sur mobile** : le bouton 🛒 (barre en haut à droite) ouvre bien la boutique en paysage quand on est vivant (rien à changer).
+- **Personnaliser** : grille des skins en grandes vignettes avec nom + prix (`.ox-skins-row`) ; toucher un skin non acheté ouvre la fenêtre d'achat.
+- **Classement en partie** : ta ligne est surlignée avec « (toi) » ; si tu n'es pas dans le top 8, elle est ajoutée en bas avec ton vrai rang.
+- Sur le VPS, seul `magma.webp` était présent dans `public/skins/` (aperçus manquants) : zip complet des 30 images donné le 23/10.
+
 ## Tester en local
 
 ```

@@ -129,6 +129,20 @@ Bloc CSS « accueil mobile » juste avant le script Umami dans `src/shell.html` 
 
 En BR classé solo (2 joueurs, hôte serveur), acheté en partie : il part (~400 px) puis revient, et l'achat est bien transmis à l'hôte (`Nl` → `{t:'lo'}`). Il disparaît s'il touche un arbre (comme les balles) et, chez l'invité, il n'est pas prédit en local (il apparaît avec le ping). En attente de la description précise de Malo.
 
+## Pièces gérées par le serveur en BR classé (ajouté le 23/10/2026)
+
+- En BR classé (`f.br`, hôte = serveur), l'hôte tient un portefeuille par joueur (`t.wal`, fonctions `oxWal…` dans `src/main.js`) : gains = même formule que le jeu (`score × COIN_PER_SCORE × 2 + kills × COIN_PER_KILL × 2`, plafond `COIN_CAP_PER_GAME`, comptés seulement en phase `play`) + caisses de pièces.
+- Chaque achat (`{t:'lo'}` arme/power-ups, `{t:'ab'}` bonus à `BONUS_COST`) est vérifié : pas assez de pièces → refusé, et l'hôte renvoie `{t:'wal'}` (solde, armes et power-ups possédés, équipement réel) que le jeu applique (`oxWalApply`, message « Pas assez de pièces »).
+- Le solde de l'hôte est envoyé à chaque snapshot (données privées `g`, index 9) et fait foi chez le joueur (`oxWalFromHost`, `f.walHost`) ; les gains locaux sont ignorés.
+- À l'entrée en BR, l'hôte force pistolet + aucun power-up (avant, le joueur pouvait arriver avec l'arme de sa partie précédente).
+- Les armes / power-ups **ramassés au sol** sont ajoutés au portefeuille et renvoyés au joueur. Avant, le jeu du joueur ne le savait pas et renvoyait son ancienne arme à la prochaine ouverture de la boutique : **cause probable du « boomerang qui ne marche pas en BR »** (boomerang ramassé puis perdu).
+- Arène et rooms privées : inchangées (pièces encore calculées par le joueur).
+
+## Boutiques (règle validée par Malo le 23/10/2026)
+
+- Boutique de l'accueil = **uniquement les skins** (achat réel, Stripe). Les skins ne s'achètent **jamais en partie** : l'onglet Skins est masqué dans toute autre boutique (`#shop:not(.skins-only) .shtab[data-sh="skins"]`), et la boutique en partie s'ouvre sur Armes.
+- Boutique en partie : se ferme avec B, avec le bouton « Fermer », ou **en cliquant / touchant en dehors du panneau** (`oxShopOutside`, ne déclenche pas de tir).
+
 ## Tester en local
 
 ```

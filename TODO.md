@@ -27,7 +27,7 @@ Ordre conseillé : **1 → 2 → 3**, puis le reste selon ses envies.
   - parties en cours (rooms, BR classé, file d'attente) ;
   - parties jouées par jour et nombre de comptes (via Supabase).
 
-## 4. Bug : boomerang en Battle Royale — testé le 23/10 : marche en BR solo, attendre la description de Malo (voir CLAUDE.md)
+## 4. Bug : boomerang en Battle Royale — cause probable corrigée le 23/10 (arme ramassée perdue à la réouverture de la boutique), à confirmer par Malo
 - Malo dit que le boomerang ne marche pas en BR. Il n'a pas été reproduit en test : en ligne dans le banc de test, il part et revient correctement.
 - Demander à Malo ce qui se passe exactement (il ne part pas ? ne revient pas ? ne fait pas de dégâts ? seulement en duo/squad ? seulement pour un invité, pas l'hôte ?).
 - Piste : en BR classé, l'hôte est le Chromium sans écran du serveur. Vérifier que l'arme boomerang achetée en partie est bien synchronisée entre l'invité et l'hôte serveur.
@@ -42,7 +42,7 @@ Ordre conseillé : **1 → 2 → 3**, puis le reste selon ses envies.
 - Le jeu affiche un message clair au joueur banni.
 - Permettre à Malo de bannir et débannir simplement : un petit script SQL ou une page admin protégée.
 
-## 7. Pièces gérées par le serveur (anti-triche)
+## 7. Pièces gérées par le serveur (anti-triche) — FAIT le 23/10 en BR classé (voir CLAUDE.md)
 - Aujourd'hui, les pièces et l'argent de partie sont calculés côté navigateur, donc modifiables par un tricheur.
 - En BR classé, l'hôte est déjà le serveur : y faire valider les achats en partie.
 - Règle validée par Malo : les pièces ne servent que pendant la partie, **seuls les PR se gardent** d'une partie à l'autre.

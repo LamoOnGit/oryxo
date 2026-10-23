@@ -1395,12 +1395,14 @@
     if (t.kind === "weapon") {
       if (e.weapon === t.id) return false;
       e.weapon = t.id, e === p && Te(e, "Arme : " + ge[t.id].name, "#e9eef7");
+      e.wal && (e.wal.w.add(t.id), oxWalSync(e));
     } else if (t.kind === "pow") {
       if (e.powerups.includes(t.id)) return false;
       e.powerups.length >= v.POW_MAX && e.powerups.shift(), e.powerups.push(t.id), e === p && Te(e, "+ " + Ie[t.id].name, "#ffd94a");
+      e.wal && (e.wal.p.add(t.id), oxWalSync(e));
     } else if (t.kind === "coins") {
       const n = ce === "br" ? v.CRATE_COINS_BR : v.CRATE_COINS;
-      return e === p ? (O.coins += n, fe(), Te(e, "+" + n + " pi\xE8ces", "#ffd94a"), Ot()) : e.isBot ? e.money = (e.money || 0) + n : e.remote && va(e.gid, { t: "coins", n }), true;
+      return e === p ? (O.coins += n, fe(), Te(e, "+" + n + " pi\xE8ces", "#ffd94a"), Ot()) : e.isBot ? e.money = (e.money || 0) + n : e.remote && (e.wal && (e.wal.crates += n), va(e.gid, { t: "coins", n })), true;
     } else return sl(e, t.id);
     return e === p && (qe = true, Ot(), St(e)), true;
   }
@@ -2226,7 +2228,7 @@
   function Qt() {
     if (!p || !v.FEATURES.shop) return 0;
     const e = Math.max(0, Math.min(v.COIN_CAP_PER_GAME, qs() - ca)), t = e - on;
-    return t <= 0 ? 0 : (on = e, O.coins += t, fe(), t);
+    return t <= 0 ? 0 : (on = e, f.walHost && Ke() || (O.coins += t, fe()), t);
   }
   function Bn() {
     Si(), Qt(), z.conn && qn({ t: "dead" });
@@ -2338,7 +2340,7 @@
   let an = "weapons", Pt = null;
   function mo(e) {
     if (O.coins < e) return false;
-    O.coins -= e, fe();
+    O.coins -= e, fe(), f.walHost && (f.coinHold = performance.now() + 900);
     const t = document.querySelector(".shop-coins");
     return t && (t.classList.remove("pay"), t.offsetWidth, t.classList.add("pay")), true;
   }
@@ -2347,7 +2349,17 @@
     !p || !p.alive || !K || (p.weapon = ft(), p.powerups = dt(), zt(p), St(p), qe = true, Ke() && Tt({ t: "lo", w: p.weapon, p: p.powerups, c: O.selectedClass || null }));
   }
   function pa() {
-    !K || !p || !p.alive || (document.body.classList.add("live-shop"), document.getElementById("shop").classList.remove("skins-only"), document.getElementById("shopBack").textContent = "Fermer (" + Q.shop.label + ")", $e = true, Pt = "live", ue = {}, ee.down = false, st(), _(ua), le.classList.add("live"));
+    !K || !p || !p.alive || (an === "skins" && (an = "weapons", document.querySelectorAll(".shtab").forEach((t) => t.classList.toggle("on", t.dataset.sh === "weapons"))), document.body.classList.add("live-shop"), document.getElementById("shop").classList.remove("skins-only"), document.getElementById("shopBack").textContent = matchMedia("(pointer: coarse)").matches ? "Fermer" : "Fermer (" + Q.shop.label + ")", $e = true, Pt = "live", ue = {}, ee.down = false, st(), _(ua), le.classList.add("live"));
+  }
+  // boutique en partie : un clic / toucher en dehors du panneau la ferme (comme la touche B), sans tirer
+  {
+    const oxShopOutside = (e) => {
+      if (!$e || !e.target || !e.target.closest) return;
+      if (e.target.closest("#shop") || e.target.closest("#shopBtn")) return;
+      e.stopPropagation(), e.cancelable && e.preventDefault(), ee.down = false, On();
+    };
+    addEventListener("mousedown", oxShopOutside, true);
+    addEventListener("touchstart", oxShopOutside, { capture: true, passive: false });
   }
   function On() {
     document.body.classList.remove("live-shop"), $e = false, Pt = null, le.classList.remove("live"), le.classList.add("hidden");
@@ -2805,7 +2817,7 @@
     let n = f.guests.get(e);
     if (t.t === "hi") {
       if (n) return;
-      if (n = xt(String(t.name || "Joueur").slice(0, 14), false), n.remote = true, n.gid = e, n.in = { x: 0, y: 0, a: 0, f: 0 }, n.needFull = true, Object.assign(n, { color: /^#[0-9a-f]{6}$/i.test(t.color) ? t.color : n.color, skin: t.skin | 0, cannon: t.cannon | 0, hat: t.hat | 0, crown: !!t.crown, bsk: typeof t.bsk === "string" && OX_BULLETS[t.bsk] ? t.bsk : null }), wa(n, t), N.push(n), f.guests.set(e, n), f.br) {
+      if (n = xt(String(t.name || "Joueur").slice(0, 14), false), n.remote = true, n.gid = e, n.in = { x: 0, y: 0, a: 0, f: 0 }, n.needFull = true, Object.assign(n, { color: /^#[0-9a-f]{6}$/i.test(t.color) ? t.color : n.color, skin: t.skin | 0, cannon: t.cannon | 0, hat: t.hat | 0, crown: !!t.crown, bsk: typeof t.bsk === "string" && OX_BULLETS[t.bsk] ? t.bsk : null }), f.br ? (wa(n, { w: "pistol", p: [], c: null }), oxWalInit(n)) : wa(n, t), N.push(n), f.guests.set(e, n), f.br) {
         vr(n), va(e, { t: "init", pv: Sa, me: n.nid, obst: Ee.map((o) => [j(o.x), j(o.y), Ve(o.r), o.seed]), br: 1, teamSize: be, team: n.team });
         return;
       }
@@ -2831,10 +2843,21 @@
       } else if (t.t === "u") n.alive && Rn(n, t.s | 0);
       else if (t.t === "ult") n.alive && jo(n);
       else if (t.t === "cl") xs(n, t.x, t.y);
-      else if (t.t === "lo") wa(n, t);
+      else if (t.t === "lo") n.wal ? oxWalLoadout(n, t) : wa(n, t);
       else if (t.t === "bsk") n.bsk = typeof t.v === "string" && OX_BULLETS[t.v] ? t.v : null;
       else if (t.t === "full") n.needFull = true;
-      else if (t.t === "ab") for (const o of t.ids || []) we[o] && n.inventory.length < v.INV_MAX && n.inventory.push(o);
+      else if (t.t === "ab") {
+        let deny = false;
+        for (const o of t.ids || []) {
+          if (!we[o] || n.inventory.length >= v.INV_MAX) continue;
+          if (n.wal) {
+            if (oxWalCoins(n) < v.BONUS_COST) { deny = true; continue; }
+            n.wal.spent += v.BONUS_COST;
+          }
+          n.inventory.push(o);
+        }
+        n.wal && oxWalSync(n, deny);
+      }
       else if (t.t === "rs") {
         if (f.br) return;
         if (!n.alive) {
@@ -2843,6 +2866,56 @@
         }
       }
     }
+  }
+  // ---------- pièces gérées par l'hôte serveur (BR classé, anti-triche) ----------
+  // L'hôte serveur compte les pièces de chaque joueur (score, éliminations, caisses) et valide chaque achat.
+  // Le joueur affiche le solde envoyé par l'hôte ; un achat sans assez de pièces est annulé.
+  function oxWalInit(t) {
+    t.wal = { earned: 0, crates: 0, spent: 0, last: oxWalRaw(t), w: new Set(["pistol"]), p: new Set() };
+  }
+  function oxWalRaw(t) {
+    return Math.floor((t.score || 0) * v.COIN_PER_SCORE * 2) + (t.kills | 0) * v.COIN_PER_KILL * 2;
+  }
+  function oxWalTick(t) {
+    const W = t.wal, r = oxWalRaw(t), d = r - W.last;
+    W.last = r;
+    d > 0 && f.br && f.br.phase === "play" && (W.earned = Math.min(v.COIN_CAP_PER_GAME, W.earned + d));
+  }
+  function oxWalCoins(t) {
+    const W = t.wal;
+    return W ? Math.max(0, W.earned + W.crates - W.spent) : 0;
+  }
+  function oxWalSync(t, deny) {
+    const W = t.wal;
+    W && t.gid && va(t.gid, { t: "wal", coins: oxWalCoins(t), w: [...W.w], p: [...W.p], eq: t.weapon, ep: t.powerups || [], deny: !!deny });
+  }
+  function oxWalLoadout(t, m) {
+    const W = t.wal, w = ge[m.w] ? m.w : t.weapon, ps = [...new Set(Array.isArray(m.p) ? m.p.filter((x) => Ie[x]) : [])].slice(0, 12);
+    let cost = W.w.has(w) ? 0 : ge[w].cost || 0;
+    for (const x of ps) W.p.has(x) || (cost += Ie[x].cost || 0);
+    if (cost > oxWalCoins(t)) return oxWalSync(t, true);
+    W.spent += cost, W.w.add(w), ps.forEach((x) => W.p.add(x));
+    wa(t, { w, p: ps, c: m.c });
+    cost && oxWalSync(t);
+  }
+  // côté joueur
+  function oxWalFromHost(c) {
+    f.walHost = true;
+    if (performance.now() < (f.coinHold || 0) || O.coins === c) return;
+    O.coins = c | 0;
+    const el = document.getElementById("shopCoins");
+    el && (el.textContent = O.coins);
+  }
+  function oxWalApply(m) {
+    f.walHost = true, f.coinHold = 0, O.coins = m.coins | 0;
+    O.ownedWeapons = ["pistol", ...(m.w || []).filter((x) => ge[x] && x !== "pistol")];
+    O.ownedPowerups = (m.p || []).filter((x) => Ie[x]);
+    ge[m.eq] && (O.equipped = m.eq);
+    O.equippedPowerups = (m.ep || []).filter((x) => Ie[x]);
+    p && (p.weapon = O.equipped, p.powerups = O.equippedPowerups.slice(), p.cls = null, St(p));
+    m.deny && p && Te(p, "Pas assez de pi\xE8ces", "#ff5c5c");
+    fe(), qe = true;
+    $e && st();
   }
   function wa(e, t) {
     ge[t.w] && (e.weapon = t.w), Array.isArray(t.p) && (e.powerups = t.p.filter((n) => Ie[n]).slice(0, 12)), e.selectedClass = t.c || null, e.cls = null, St(e);
@@ -2896,7 +2969,7 @@
       const M = [A.nid, j(A.x), j(A.y), Math.round(A.angle * 100) / 100, Math.ceil(A.hp), A.alive ? 1 : 0, Ql(A), j(A.guard || 0), Ve(A.guardHit || 0), Ve(A.recoil || 0), j(A.score), A.kills, A._laser && e - A._laser.at < 60 ? [Math.round(A._laser.a * 100) / 100, j(A._laser.end), A._laser.big ? 1 : 0] : 0], P = [A.name, A.color, A.skin | 0, A.cannon | 0, A.hat | 0, A.weapon, (A.powerups || []).join(","), A.cls ? A.cls.id : "", A.team == null ? -1 : A.team, A.deadBy || "", A.isBot ? 1 : 0, A.crown ? 1 : 0], B = JSON.stringify(P), L = M.concat(P);
       n.push(L), o.push(B !== A._nst ? L : M), A._nst = B;
     }
-    const a = Se.map((A) => [j(A.x), j(A.y), j(A.vx), j(A.vy), A.r || Dt, A.color, (A.rocket ? 1 : 0) | (A.boomer ? 2 : 0) | (A.trail ? 4 : 0) | (A.fake ? 8 : 0) | (A.knife ? 16 : 0) | (A.special ? 32 : 0), A.owner && A.owner.nid || 0, Math.min(999, Math.round(performance.now() - (A.born || 0))), A.id || (A.id = f.bid = ((f.bid || 0) + 1) % 1e6)]), i = Ze.map((A) => [j(A.x), j(A.y), A.kind || "bonus", A.id]), l = Ge.map((A) => [j(A.x), j(A.y), Ve(A.angle), A.color, A.skin | 0, A.cannon | 0, A.hat | 0]), r = (A) => [Ve(A.vx), Ve(A.vy), Ve(A.moveT || 0), A.inventory, Ve(A.ultCd || 0), Ve(A.heat || 0), A.overheated ? 1 : 0, A.lastSeq | 0, A.combo | 0], h = { t: "s", ts: Math.round(e), tk: o, c: l };
+    const a = Se.map((A) => [j(A.x), j(A.y), j(A.vx), j(A.vy), A.r || Dt, A.color, (A.rocket ? 1 : 0) | (A.boomer ? 2 : 0) | (A.trail ? 4 : 0) | (A.fake ? 8 : 0) | (A.knife ? 16 : 0) | (A.special ? 32 : 0), A.owner && A.owner.nid || 0, Math.min(999, Math.round(performance.now() - (A.born || 0))), A.id || (A.id = f.bid = ((f.bid || 0) + 1) % 1e6)]), i = Ze.map((A) => [j(A.x), j(A.y), A.kind || "bonus", A.id]), l = Ge.map((A) => [j(A.x), j(A.y), Ve(A.angle), A.color, A.skin | 0, A.cannon | 0, A.hat | 0]), r = (A) => [Ve(A.vx), Ve(A.vy), Ve(A.moveT || 0), A.inventory, Ve(A.ultCd || 0), Ve(A.heat || 0), A.overheated ? 1 : 0, A.lastSeq | 0, A.combo | 0, A.wal ? (oxWalTick(A), oxWalCoins(A)) : null], h = { t: "s", ts: Math.round(e), tk: o, c: l };
     f.br && (h.st = f.br.phase, h.jn = f.guests.size, h.ex = f.br.expected, C && (h.z = [j(C.x), j(C.y), j(C.r), j(C.nx || 0), j(C.ny || 0), j(C.nr || 0), C.st, C.pi, Ve(C.t)]));
     const c = f.ev;
     f.ev = [];
@@ -2975,13 +3048,17 @@
         location.replace(location.pathname + "?v=" + Date.now() + u);
         return;
       }
-      f.meNid = e.me, Go(), Ee.length = 0;
+      f.meNid = e.me, f.walHost = false, f.coinHold = 0, Go(), Ee.length = 0;
       for (const u of e.obst) Ee.push({ x: u[0], y: u[1], r: u[2], seed: u[3] });
       Bs(), hs(), N.length = 0, Se.length = 0, Ze.length = 0, Ge.length = 0, tt.length = 0, At.clear(), f.snaps = [], f.pred = null, f.hist = [], f.seq = 0, f.stepN = 0, f.steps = [], f.offs = [], f.clockOff = 0, f.delay = 0, p = null, le.classList.add("hidden"), K = true, pt.hidden = false, An(), ue = {}, ee.down = false, f.wasAlive = true, f.lastKills = 0, ca = 0, on = 0, e.br && (ce = "br", be = e.teamSize || 1, f.ranked = true, f.state = "lobby", C = null, document.getElementById("remain").style.display = "block");
       return;
     }
     if (e.t === "coins") {
-      O.coins += e.n | 0, fe(), p && Pa(p, "+" + (e.n | 0) + " pi\xE8ces", "#ffd94a"), Ot();
+      f.walHost || (O.coins += e.n | 0, fe()), p && Pa(p, "+" + (e.n | 0) + " pi\xE8ces", "#ffd94a"), Ot();
+      return;
+    }
+    if (e.t === "wal") {
+      oxWalApply(e);
       return;
     }
     if (e.t !== "s" || f.meNid == null) return;
@@ -3022,6 +3099,7 @@
     if (c && d) {
       const u = (d[3] || []).join(",") + "|" + Math.ceil(d[4] || 0);
       u !== f.invKey && (f.invKey = u, qe = true), c.inventory = d[3], c.ultCd = d[4], c.heat = d[5], c.overheated = !!d[6], c.combo = d[8];
+      d[9] != null && oxWalFromHost(d[9]);
       const g = f.sentAt.get(d[7]);
       if (g) {
         f.rtt = f.rtt ? f.rtt * 0.8 + (t - g) * 0.2 : t - g;

@@ -183,6 +183,12 @@ Déployé par Malo : jeu `8445d3a08b64…` (commit 12b01cc) + serveur `90ddd578c
 - Jeu : `oxIsAdmin()` / `oxAdminAddSkins()` (appelé dans `oxRankAddOwned`, donc à chaque recalcul des skins possédés) → un admin possède **tous** les skins de `OX_SKINS` + `OX_RANK_SKINS`, donc automatiquement chaque nouveau skin ajouté au jeu. Le skin équipé n'est plus retiré tant que le profil n'est pas chargé (sinon un admin perdait son skin au rechargement).
 - C'est côté jeu (cosmétique) : les skins des admins ne passent pas par `my_skins` ni Stripe.
 
+## Balles qui traversaient les tanks (corrigé le 26/10/2026)
+
+- Cause 1 : la collision n'était testée qu'à la position d'arrivée de chaque pas. Sniper = 1100 px/s ; si l'hôte serveur ralentit (pas de 50 ms → 55 px), la balle sautait par-dessus le tank (rayon de contact 26 px). Test : 37/40 touches à 50 ms avant, 40/40 après.
+- Cause 2 (la plus fréquente en ligne) : pour compenser le ping, l'hôte avance d'un coup la balle d'un joueur distant (`oneWay`, jusqu'à 120 ms ≈ 130 px au sniper) **sans test de collision** → un ennemi proche était traversé. Test ennemi à 70-230 px : 20 à 34/40 avant selon le ping, 38-40/40 après.
+- Correction : `oxSegDist` (distance d'un point au trajet de la balle pendant le pas) pour les tanks et les obstacles, côté hôte (`o.px/o.py`, et `o.fx/o.fy` = vrai point de départ testé au 1er pas après l'avance) et côté invité pour les tirs prédits.
+
 ## Tester en local
 
 ```

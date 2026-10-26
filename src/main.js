@@ -915,6 +915,13 @@
   function Pn(e) {
     return ge[e.weapon] || ge.pistol;
   }
+  function oxSegDist(cx, cy, ax, ay, bx, by) {
+    if (ax == null || ay == null) return Math.hypot(cx - bx, cy - by);
+    const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy;
+    let t = L2 > 0 ? ((cx - ax) * dx + (cy - ay) * dy) / L2 : 1;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    return Math.hypot(cx - (ax + dx * t), cy - (ay + dy * t));
+  }
   function Fo(e, t) {
     const n = e.ph;
     if (!t || !n || !n.length) return e;
@@ -935,7 +942,7 @@
     if (e.remote && !h.orbit) {
       h.rw = e.viewLag || 0;
       const c = Math.min(0.12, (e.oneWay || 0) / 1e3);
-      c > 0 && !h.boomer && (h.x += h.vx * c, h.y += h.vy * c, h.life -= c);
+      c > 0 && !h.boomer && (h.fx = h.x, h.fy = h.y, h.x += h.vx * c, h.y += h.vy * c, h.life -= c);   // fx/fy : départ réel, testé au 1er pas
     }
     Se.push(h);
   }
@@ -1618,13 +1625,13 @@
           Se.splice(n, 1);
           continue;
         }
-        o.orbit.a += e * 5.5, o.x = o.owner.x + Math.cos(o.orbit.a) * o.orbit.r, o.y = o.owner.y + Math.sin(o.orbit.a) * o.orbit.r, o.spin = (o.spin || 0) + e * 18;
-      } else o.x += o.vx * e, o.y += o.vy * e;
+        o.orbit.a += e * 5.5, o.x = o.owner.x + Math.cos(o.orbit.a) * o.orbit.r, o.y = o.owner.y + Math.sin(o.orbit.a) * o.orbit.r, o.spin = (o.spin || 0) + e * 18, o.px = o.x, o.py = o.y;
+      } else o.px = o.fx != null ? o.fx : o.x, o.py = o.fy != null ? o.fy : o.y, o.fx = o.fy = null, o.x += o.vx * e, o.y += o.vy * e;
       o.life -= e;
       const a = o.r || Dt;
       let i = o.life <= 0 || !o.orbit && (o.x < 0 || o.x > S || o.y < 0 || o.y > S);
       if (i && o.life > 0 && !o.bounced && !o.orbit && Ue(o.owner, "ricochet") && (i = false), !i && o.boomer && o.owner.alive && (performance.now() - o.t0) / 1e3 > v.BOOMERANG_RETURN && Math.hypot(o.owner.x - o.x, o.owner.y - o.y) < k && (i = true), !i && !o.bounced && !o.orbit && Ue(o.owner, "ricochet") && (o.x < 0 || o.x > S || o.y < 0 || o.y > S) && o.life > 0 && ((o.x < 0 || o.x > S) && (o.vx = -o.vx), (o.y < 0 || o.y > S) && (o.vy = -o.vy), o.x = Math.max(1, Math.min(S - 1, o.x)), o.y = Math.max(1, Math.min(S - 1, o.y)), o.bounced = true, o.life += 0.3, i = false), !i && !o.boomer && !o.orbit) {
-        for (const l of Ee) if (Math.hypot(l.x - o.x, l.y - o.y) < l.r + a) {
+        for (const l of Ee) if (oxSegDist(l.x, l.y, o.px, o.py, o.x, o.y) < l.r + a) {
           if (!o.bounced && Ue(o.owner, "ricochet")) {
             const r = (o.x - l.x) / (Math.hypot(o.x - l.x, o.y - l.y) || 1), h = (o.y - l.y) / (Math.hypot(o.x - l.x, o.y - l.y) || 1), c = o.vx * r + o.vy * h;
             o.vx -= 2 * c * r, o.vy -= 2 * c * h, o.x = l.x + r * (l.r + a + 1), o.y = l.y + h * (l.r + a + 1), o.bounced = true, o.life += 0.3, oe(o.x, o.y, "#ffd94a", 4, 120);
@@ -1637,7 +1644,7 @@
       if (!i) for (const l of N) {
         if (!l.alive || l === o.owner || ve(l, o.owner) || o.hitSet && o.hitSet.has(l) || o.orbit && o.hitAt && o.hitAt.get(l) > performance.now()) continue;
         const r = o.rw ? Fo(l, o.rw) : l;
-        if (Math.hypot(r.x - o.x, r.y - o.y) < k + a) {
+        if (oxSegDist(r.x, r.y, o.px, o.py, o.x, o.y) < k + a) {
           if (o.fake) {
             i = true;
             break;
@@ -3251,20 +3258,18 @@
   function jl(e) {
     const t = f.lb || [];
     for (let n = t.length - 1; n >= 0; n--) {
-      const o = t[n];
+      const o = t[n], px = o.x, py = o.y;
       o.x += o.vx * e, o.y += o.vy * e, o.life -= e;
       let a = o.life <= 0 || o.x < 0 || o.y < 0 || o.x > S || o.y > S;
       if (!a) for (const i of Ee) {
-        const l = o.x - i.x, r = o.y - i.y;
-        if (l * l + r * r < (i.r + o.r) * (i.r + o.r)) {
+        if (oxSegDist(i.x, i.y, px, py, o.x, o.y) < i.r + o.r) {
           a = true;
           break;
         }
       }
       if (!a) for (const i of N) {
         if (i === p || !i.alive || i.effects && i.effects.invis > 0 || ve(i, p)) continue;
-        const l = o.x - i.x, r = o.y - i.y;
-        if (l * l + r * r < (k + o.r) * (k + o.r)) {
+        if (oxSegDist(i.x, i.y, px, py, o.x, o.y) < k + o.r) {
           a = true, Co(), f.lastLocalHit = performance.now(), Ea(o.x, o.y, o.color, 6, 160);
           break;
         }

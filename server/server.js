@@ -297,7 +297,7 @@ async function hostPage(code, query) {
 async function getBrowser() {
   if (browser && browser.isConnected()) return browser;
   const { chromium } = require('playwright');
-  const opts = { args: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows', '--autoplay-policy=no-user-gesture-required'] };
+  const opts = { handleSIGTERM: false, handleSIGINT: false, handleSIGHUP: false, args: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows', '--autoplay-policy=no-user-gesture-required'] };
   if (process.env.CHROMIUM_PATH) opts.executablePath = process.env.CHROMIUM_PATH;
   browser = await chromium.launch(opts);
   return browser;
@@ -545,5 +545,17 @@ async function statsPage(req, res) {
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' });
   res.end(html);
 }
+
+// arrêt propre (systemctl restart / deploy) : on ferme Chromium puis on quitte, 2 s maximum.
+// Avant, le serveur restait bloqué en « deactivating » jusqu'à ce que systemd le tue.
+let stopping = false;
+for (const sig of ['SIGTERM', 'SIGINT', 'SIGHUP']) process.on(sig, () => {
+  if (stopping) return; stopping = true;
+  log('arrêt demandé (' + sig + ')');
+  setTimeout(() => process.exit(0), 2000).unref();
+  try { server.close(); } catch (e) {}
+  const b = browser; browser = null;
+  Promise.resolve(b && b.close()).catch(() => {}).finally(() => process.exit(0));
+});
 
 server.listen(PORT, HOST, () => { setTimeout(fillWarm, 500); }); server.on('listening', () => log(`Orbit.io sur http://${HOST}:${PORT} — classé ${SB_URL && SB_SECRET ? 'ACTIVÉ' : 'en mode dev (pas de Supabase)'}`));

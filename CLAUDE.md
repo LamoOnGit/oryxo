@@ -152,6 +152,11 @@ En BR classé solo (2 joueurs, hôte serveur), acheté en partie : il part (~400
 - **Classement en partie** : ta ligne est surlignée avec « (toi) » ; si tu n'es pas dans le top 8, elle est ajoutée en bas avec ton vrai rang.
 - Sur le VPS, seul `magma.webp` était présent dans `public/skins/` (aperçus manquants) : zip complet des 30 images donné le 23/10.
 
+## Arrêt du serveur (corrigé le 26/10/2026)
+
+- Avant : `systemctl restart orbit` restait bloqué en « deactivating (stop-sigterm) » (le serveur ignorait SIGTERM à cause de Chromium/Playwright) ; il fallait `sudo kill -9 <Main PID>`. Le drop-in `TimeoutStopSec=5` ne semblait pas actif (à vérifier : `systemctl show orbit -p TimeoutStopUSec`).
+- Maintenant : `server.js` gère SIGTERM/SIGINT/SIGHUP (ferme Chromium puis quitte, 2 s max) et lance Chromium avec `handleSIGTERM/SIGINT/SIGHUP: false`. Testé : arrêt en 1-2 s.
+
 ## Tester en local
 
 ```

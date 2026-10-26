@@ -13,7 +13,7 @@ Malo débute en dev : explique-lui les choses **en français, simplement, une é
 | `dist/index-oryxo.html` | Dernière version construite (celle qu'on déploie) |
 | `server/server.js` | (= `/opt/orbit/server.js`) Serveur Node (http + WebSocket `ws`) : sert `public/`, rooms, file d'attente classée, social |
 | `server/public/` | = `/opt/orbit/public` sur le VPS. Fichiers statiques à côté du jeu : `skins/*.webp`, favicon, og-image, robots.txt, sitemap.xml, llms.txt, manifest, pages légales (`mentions-legales.html`, `cgv.html`, `confidentialite.html` + `legal.css`) |
-| `sql/` | Scripts Supabase dans l'ordre où ils ont été donnés (01 → 06). `verification.sql` affiche ✅/❌ pour chacun (à lancer dans le SQL Editor). Tous installés et vérifiés ✅ par Malo le 26/10 (ordre sûr si on réinstalle : 05 puis 04 puis 06, le 04 utilise avatar_url et crown ajoutés par le 05) |
+| `sql/` | Scripts Supabase dans l'ordre où ils ont été donnés (01 → 07). `verification.sql` affiche ✅/❌ pour chacun (à lancer dans le SQL Editor). Tous installés et vérifiés ✅ par Malo le 26/10 (ordre sûr si on réinstalle : 05 puis 04 puis 06, le 04 utilise avatar_url et crown ajoutés par le 05) |
 | `deploy/` | `setup-vps.sh` (installation unique sur le VPS) et `oryxo-deploy.sh` (script qui reçoit et installe une version, copié dans `/usr/local/sbin/oryxo-deploy`) |
 | `.github/workflows/deploy.yml` | Déploiement automatique : chaque push sur `main` qui touche `src/`, `server/`, `build.py` ou `package*.json` construit le jeu et l'envoie sur le VPS |
 | `package.json` | esbuild 0.28.2 fixé (`npm ci` puis `python3 build.py`) |
@@ -160,6 +160,14 @@ En BR classé solo (2 joueurs, hôte serveur), acheté en partie : il part (~400
 ## En ligne (26/10/2026)
 
 Déployé par Malo : jeu `8445d3a08b64…` (commit 12b01cc) + serveur `90ddd578c4a8…` (arrêt propre), 30 images de skins, `STATS_PASS` ajouté au `.env`, scripts Supabase 01-06 ✅. Vérifier une version en ligne : `sha256sum /opt/orbit/public/index.html /opt/orbit/server.js` sur le VPS. Clé secrète Supabase de nouveau exposée sur une capture le 26/10 → à remplacer (nouvelle clé dans `.env`, puis supprimer l'ancienne dans Supabase).
+
+## Clans (backend ajouté le 26/10/2026)
+
+- L'interface existait déjà dans le jeu (onglet Clan du Social, fonctions `oxClan…`), mais aucune fonction Supabase : d'où « Clans indisponibles ». `sql/07-clans.sql` crée tout.
+- Tables `clans`, `clan_members` (1 clan max par joueur, clé = user_id), `clan_requests`, `clan_invites` : RLS activé, **aucun accès direct**, tout passe par des fonctions `security definer`.
+- Fonctions : `clan_get(p_clan)`, `clan_search(p_q)` (vide = classement par PR total), `clan_my_invites`, `clan_tags(p_ids)`, `clan_create`, `clan_update` (chef), `clan_disband` (chef), `clan_join` (ouvert = direct, sur demande = demande, sur invitation = refus), `clan_invite` / `clan_respond` (chef + officiers), `clan_invite_respond`, `clan_kick` (chef : tous sauf chef ; officier : membres), `clan_set_role` (chef ; nommer chef = l'ancien devient officier), `clan_leave` (le chef qui part passe la main à l'officier le plus ancien ; dernier membre = clan supprimé). Codes renvoyés = clés de `OX_CLAN_ERR`. 30 membres max, nom 3-24, tag 2-5 `[A-Z0-9]`, description 200 max.
+- Le même script ajoute `profiles.quests` + `quest_get` / `quest_sync` (quêtes sauvegardées avec le compte, on garde toujours le max) et `player_extras(p_id)` (clan + badges sur la carte joueur).
+- Testé sur PostgreSQL 16 avec 4 joueurs (scénario complet) + affichage de l'onglet Clan avec ces données.
 
 ## Tester en local
 

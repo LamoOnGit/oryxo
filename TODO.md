@@ -66,3 +66,8 @@ Ordre conseillé : **1 → 2 → 3**, puis le reste selon ses envies.
 ## 11. Optionnel
 - **Skins animés plus légers** : si ça rame sur les vieux téléphones, réduire la taille des planches en partie (aujourd'hui 176 px par calque, environ 6 Mo de mémoire par skin animé une fois chargé).
 - **Sécurité** : faire changer la clé secrète Supabase à Malo (elle est apparue une fois sur une capture), puis mettre à jour `/opt/orbit/.env` sur le VPS et redémarrer `orbit`.
+
+## Badges de quêtes (décidé le 26/10, à faire plus tard)
+- Malo **dessinera lui-même** les badges (comme les skins) ; on les intégrera avec un outil de conversion.
+- Pas de quêtes du jour / de la semaine pour l'instant.
+- Pistes encore ouvertes : vitrine de badges sur la carte joueur, récompenses pour les badges Or, nouvelles quêtes.

@@ -382,6 +382,14 @@ body.touch-play #specBar{transform:translateX(-50%) scale(.8)}
 @media(max-height:560px){#modeSel .star-a,#modeSel .star-b{display:none}}
 @media(min-width:591px) and (max-width:900px){#modeSel .home-topbar{flex-wrap:wrap;justify-content:center;row-gap:10px}#modeSel .home-brand{flex:none}#modeSel .quick{width:100%;justify-content:center}}
 </style>
+<style>/* carte joueur : plus d'air en haut, moins de vide en bas */
+.pc-card{padding:30px 24px 20px}
+.pc-close{top:16px;right:16px}
+.pc-top{padding-right:54px}
+.pc-rank{margin:20px 0 14px}
+.pc-msg:empty{min-height:0;margin:0}
+@media(max-width:520px){.pc-card{padding:24px 16px 16px}.pc-close{top:12px;right:12px}.pc-top{padding-right:46px}.pc-rank{margin:16px 0 12px}}
+</style>
 <!-- Statistiques de visite (Umami, sans cookie). Colle ton identifiant de site Umami entre les guillemets de UMAMI_ID. Vide = désactivé. -->
 <script>(function(){var UMAMI_ID='83df179b-0828-4a0c-8e07-3a2e2275e1c1';if(!UMAMI_ID||location.hostname!=='oryxo.eu'||/[?&]serverhost=/.test(location.search))return;var s=document.createElement('script');s.defer=true;s.src='https://cloud.umami.is/script.js';s.setAttribute('data-website-id',UMAMI_ID);document.head.appendChild(s);})();</script>
 </head>

@@ -403,6 +403,27 @@ body.touch-play #specBar{transform:translateX(-50%) scale(.8)}
 #profile .acc-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:18px}
 #profile .acc-actions>*{display:flex;align-items:center;justify-content:center;text-align:center;margin:0;min-height:36px;padding:6px 8px;box-sizing:border-box}
 @media(max-width:420px){#profile .acc-actions{grid-template-columns:1fr 1fr}#profile .acc-actions>#accLogout{grid-column:1/-1}}
+/* 2 colonnes sur grand écran, pour ne plus avoir à faire défiler */
+.ox-pcol > :first-child{margin-top:0}
+.ox-pcol-l #profClasseH{display:none!important}
+.ox-pcol-l .prof-head{margin-bottom:16px}
+.ox-pcol-l .acc-rank + .pc-tl{margin-top:12px}
+.ox-pcol-r > .acc-h:first-child, #profAcct > .acc-h:first-child{margin-top:0}
+@media(min-width:900px) and (min-height:560px){
+  #overlay > #profile{width:min(940px,94vw);max-width:none;padding:58px 28px 22px}
+  .ox-pcols{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:start}
+  .ox-pcol-r #profAcct > .acc-h{margin-top:0}
+  .ox-pcol-r .prof-fr{margin-bottom:0}
+  #profile .acc-matches li{padding:6px 12px}
+}
+/* téléphone : un peu plus compact */
+@media(max-width:600px){
+  #profile .prof-head{gap:14px;margin-bottom:14px}
+  #profile .prof-avatar{width:96px;height:96px;flex:none}
+  #profile .prof-avatar canvas,#profile .prof-avatar img{width:100%!important;height:100%!important}
+  #profile .acc-matches li{padding:5px 10px}
+  #profile .acc-rank{padding:10px 12px}
+}
 </style>
 <!-- Statistiques de visite (Umami, sans cookie). Colle ton identifiant de site Umami entre les guillemets de UMAMI_ID. Vide = désactivé. -->
 <script>(function(){var UMAMI_ID='83df179b-0828-4a0c-8e07-3a2e2275e1c1';if(!UMAMI_ID||location.hostname!=='oryxo.eu'||/[?&]serverhost=/.test(location.search))return;var s=document.createElement('script');s.defer=true;s.src='https://cloud.umami.is/script.js';s.setAttribute('data-website-id',UMAMI_ID);document.head.appendChild(s);})();</script>
@@ -568,7 +589,7 @@ body.touch-play #specBar{transform:translateX(-50%) scale(.8)}
       <div class="pstat"><b id="pWins">0</b><span>Victoires</span></div>
       <div class="pstat"><b id="pGames">0</b><span>Parties</span></div>
     </div>
-    <h3 class="acc-h">Classé</h3>
+    <h3 class="acc-h" id="profClasseH">Classé</h3>
     <div id="profAcct"></div>
     <h3 class="acc-h">Amis <i class="fr-badge" hidden></i></h3>
     <div class="fr-scope prof-fr">

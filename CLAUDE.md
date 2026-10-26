@@ -172,6 +172,7 @@ Déployé par Malo : jeu `8445d3a08b64…` (commit 12b01cc) + serveur `90ddd578c
 ## Page profil + tag de clan (corrigés le 26/10/2026)
 
 - Page profil (`#profile`) : elle débordait en haut quand elle était plus haute que l'écran (le `#overlay` centre verticalement) → `box-sizing:border-box` + hauteur max + défilement interne. Frise « Progression classée » ajoutée sous le rang (`oxTimelineHtml`, comme sur la carte joueur). « Voir les quêtes » à droite du titre Badges (`.ox-bh`), boutons du compte en grille alignée (3 colonnes, 2 + 1 sur téléphone).
+- **2 colonnes sur grand écran** (≥ 900 × 560 px) pour ne plus défiler : `oxProfLayout()` (appelé après chaque `Dn()`) range identité / rang / frise / stats à gauche et parties / badges / compte / amis à droite. Le compte est redessiné à chaque `Dn()` : les blocs déplacés portent `.ox-moved` et sont supprimés avant d'être remplacés. Les stats locales et le titre « Classé » (masqués une fois connecté) sont retrouvés par `#profile .prof-stats:not(.acc-stats)` et `#profClasseH`. Testé : 590 px de haut de 1280×720 à 1920×1080 ; sur téléphone on garde 1 colonne (défilement).
 - Tag de clan (`.ox-tag`) : il héritait de l'ombre portée du nom du clan, qui coupait le bas des lettres → `text-shadow:none`.
 
 ## Tester en local

@@ -3743,9 +3743,9 @@
     } else e.innerHTML = "<b>Se connecter</b><span>pour le class\xE9</span>";
     const n = document.getElementById("profAcct");
     if (!n) return;
-    const o = document.getElementById("profName"), a = document.getElementById("profAvatarImg"), i = document.querySelector("#profile > .prof-stats"), l = document.getElementById("editCircle"), r = document.getElementById("profRank");
+    const o = document.getElementById("profName"), a = document.getElementById("profAvatarImg"), i = document.querySelector("#profile .prof-stats:not(.acc-stats)"), l = document.getElementById("editCircle"), r = document.getElementById("profRank");
     i && (i.style.display = t ? "none" : "");
-    const h = document.querySelector("#profile > .acc-h");
+    const h = document.getElementById("profClasseH") || document.querySelector("#profile > .acc-h");
     if (h && (h.style.display = t ? "none" : ""), !t) {
       if (q.user) {
         n.innerHTML = `<div class="acc-cta"><p>Tu es connect\xE9, mais ton profil class\xE9 ne s'est pas charg\xE9.</p><p style="color:#ff8a8a">` + ie(q.err || "Erreur inconnue") + '</p><button type="button" class="cta" id="accRetry">R\xE9essayer</button> <button type="button" class="prof-mini" id="accLogout2" style="margin-top:10px">D\xE9connexion</button></div>', document.getElementById("accRetry").onclick = Lt, document.getElementById("accLogout2").onclick = async () => {
@@ -5853,6 +5853,29 @@
     const m = document.getElementById("oxQModal");
     m && !m.hidden && oxQRender();
   }
+  // page profil sur 2 colonnes (grand écran) : à gauche identité, rang, frise, stats ; à droite parties, badges, compte, amis.
+  // Sur petit écran, les 2 colonnes s'empilent : même ordre qu'avant.
+  function oxProfLayout() {
+    const prof = document.getElementById("profile"), acct = document.getElementById("profAcct");
+    if (!prof || !acct) return;
+    let cols = prof.querySelector(".ox-pcols");
+    if (!cols) {
+      cols = document.createElement("div");
+      cols.className = "ox-pcols";
+      cols.innerHTML = '<div class="ox-pcol ox-pcol-l"></div><div class="ox-pcol ox-pcol-r"></div>';
+      prof.insertBefore(cols, prof.querySelector(".prof-head") || acct);
+    }
+    const L = cols.children[0], Rc = cols.children[1];
+    for (const sel of [".prof-head", ".prof-stats:not(.acc-stats)"]) { const el = prof.querySelector(":scope > " + sel); el && L.appendChild(el); }
+    // le titre « Classé » d'origine (masqué une fois connecté) suit les stats
+    const h0 = [...prof.querySelectorAll(":scope > h3.acc-h")].find((h) => h.nextElementSibling === acct);
+    h0 && L.appendChild(h0);
+    L.querySelectorAll(".ox-moved").forEach((x) => x.remove());   // anciennes copies (le compte est redessiné à chaque fois)
+    for (const sel of [".acc-rank", ".pc-tl", ".acc-stats"]) { const el = acct.querySelector(":scope > " + sel); el && (el.classList.add("ox-moved"), L.appendChild(el)); }
+    acct.parentElement !== Rc && Rc.appendChild(acct);
+    const fr = prof.querySelector(":scope > .fr-scope.prof-fr");
+    if (fr) { const h = fr.previousElementSibling; h && h.matches("h3.acc-h") && Rc.appendChild(h); Rc.appendChild(fr); }
+  }
   {
     const _Dn = Dn;
     Dn = function() {
@@ -5870,6 +5893,7 @@
         const rk = host.querySelector(".acc-rank");
         if (rk && !host.querySelector(".pc-tl")) { try { rk.insertAdjacentHTML("afterend", oxTimelineHtml(Object.assign({}, q.profile, { loading: false }))); } catch (er) { console.warn(er); } }
       }
+      try { oxProfLayout(); } catch (er) { console.warn(er); }
       return r;
     };
   }

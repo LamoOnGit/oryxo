@@ -468,6 +468,30 @@ body.touch-play #specBar{transform:translateX(-50%) scale(.8)}
   #profile .acc-actions{margin-top:10px}
 }
 </style>
+<style>/* profil réorganisé : badges à gauche, amis compacts à droite, compte en bas */
+.acc-h .fr-badge[hidden]{display:none}
+#profile .ox-pcol-l .ox-prof-badges{margin-top:14px}
+#profile .ox-pcol-l .ox-prof-badges .acc-h{margin-top:0}
+.ox-pfoot{margin-top:14px;padding-top:12px;border-top:2px solid rgba(255,255,255,.08)}
+.ox-pfoot .acc-actions{margin-top:0!important}
+#profile .ox-pfoot .acc-msg:not(:empty){margin:8px 0 0;text-align:center}
+#profile .prof-fr .fr-msg:empty{display:none}
+#profile .prof-fr .fr-msg{min-height:0;margin:6px 2px 0}
+#profile .prof-fr .fr-list h3:first-child{margin-top:10px}
+#profile .prof-fr .fr-list h3{margin:10px 0 6px}
+#profile .prof-fr .fr-row{padding:5px 8px;gap:8px;border-radius:10px}
+#profile .prof-fr .ox-av{width:32px!important;height:32px!important}
+#profile .prof-fr .fr-who b{font-size:15px}
+#profile .prof-fr .fr-who small{font-size:11px}
+#profile .prof-fr .fr-x{width:30px;height:30px}
+#profile .prof-fr .fr-list ul{gap:5px}
+#profile .prof-fr .fr-add input{padding:9px 12px}
+@media(min-width:900px) and (min-height:520px){
+  #profile .ox-pcol-r .prof-fr .fr-list{max-height:min(240px,32vh);overflow-y:auto;padding-right:4px;scrollbar-width:thin}
+  #profile .ox-pfoot .acc-actions{display:flex!important;justify-content:flex-end;gap:8px}
+  #profile .ox-pfoot .acc-actions>*{min-width:150px}
+}
+</style>
 <!-- Statistiques de visite (Umami, sans cookie). Colle ton identifiant de site Umami entre les guillemets de UMAMI_ID. Vide = désactivé. -->
 <script>(function(){var UMAMI_ID='83df179b-0828-4a0c-8e07-3a2e2275e1c1';if(!UMAMI_ID||location.hostname!=='oryxo.eu'||/[?&]serverhost=/.test(location.search))return;var s=document.createElement('script');s.defer=true;s.src='https://cloud.umami.is/script.js';s.setAttribute('data-website-id',UMAMI_ID);document.head.appendChild(s);})();</script>
 </head>

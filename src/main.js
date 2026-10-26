@@ -5870,9 +5870,15 @@
     // le titre « Classé » d'origine (masqué une fois connecté) suit les stats
     const h0 = [...prof.querySelectorAll(":scope > h3.acc-h")].find((h) => h.nextElementSibling === acct);
     h0 && L.appendChild(h0);
-    L.querySelectorAll(".ox-moved").forEach((x) => x.remove());   // anciennes copies (le compte est redessiné à chaque fois)
-    for (const sel of [".acc-rank", ".pc-tl", ".acc-stats"]) { const el = acct.querySelector(":scope > " + sel); el && (el.classList.add("ox-moved"), L.appendChild(el)); }
-    acct.parentElement !== Rc && Rc.appendChild(acct);
+    let foot = prof.querySelector(".ox-pfoot");
+    if (!foot) { foot = document.createElement("div"); foot.className = "ox-pfoot"; cols.after(foot); }
+    prof.querySelectorAll(".ox-pcols .ox-moved, .ox-pfoot .ox-moved").forEach((x) => x.remove());   // anciennes copies (le compte est redessiné à chaque fois)
+    // gauche : rang, frise, stats, badges
+    for (const sel of [".acc-rank", ".pc-tl", ".acc-stats", ".ox-prof-badges"]) { const el = acct.querySelector(":scope > " + sel); el && (el.classList.add("ox-moved"), L.appendChild(el)); }
+    // bas, sur toute la largeur : boutons du compte + message
+    for (const sel of [".acc-actions", ".acc-msg"]) { const el = acct.querySelector(":scope > " + sel); el && (el.classList.add("ox-moved"), foot.appendChild(el)); }
+    // droite : dernières parties (reste du compte) puis amis
+    acct.parentElement !== Rc && Rc.prepend(acct);
     const fr = prof.querySelector(":scope > .fr-scope.prof-fr");
     if (fr) { const h = fr.previousElementSibling; h && h.matches("h3.acc-h") && Rc.appendChild(h); Rc.appendChild(fr); }
   }

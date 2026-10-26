@@ -197,3 +197,11 @@ cd server && SB_URL=http://127.0.0.1:5599 SB_SECRET=x PORT=3311 node server.js
 python3 tools/test/mktest.py server/public/index.html   # build de test avec window.__g (servi par le serveur local)
 ```
 Avec `pkill`, ancrer le motif (`pkill -f "^node server.js"`), sinon on tue son propre shell.
+
+## Arbres, eau, accueil, balles de skin (corrigés le 26/10/2026)
+
+- **Arbres** : le tank s'arrête au bord du feuillage dessiné, plus au tronc (`oxTreeProf` recalcule le contour des boules de feuilles depuis `seed`, `oxTreeHit` = distance d'arrêt selon l'angle). Utilisé chez l'hôte (`Es`) et dans la prédiction de l'invité (identique). Les pièces/objets et téléportations évitent aussi le feuillage (`ws`, `Yo`). Le volcan (r ≥ 100) garde son cercle.
+- **Eau** : `ot()` bloque maintenant le centre du tank à 12 px **avant** l'eau (avant : 13 px dedans, le tank débordait de ~35 px). Sur un pont, le tank reste sur le tablier (`oxOnBridge`, marge 17 px). `no()` n'a pas changé (sinon les arbres changeraient de place).
+- **Accueil** : le gros tank avec un skin dessiné utilise la vignette `_thumb.webp` (256 px, `oxHeroSkin`) au lieu des calques 176 px agrandis ~6× ; canvas `#heroTank` à la résolution de l'écran (×DPR). Pour encore plus net : il faudrait les dessins originaux 512 px de Malo (faire des `_hd.webp`).
+- **« ? » de « Prêt à dominer »** : `em` en `inline-block`, petit espace, italique comme le reste.
+- **Balles de la couleur du skin** : `OX_SKIN_BULLET` (id 40-54 → couleur), `oxBulletColor` = couleur de balles gagnée au classé si équipée, sinon couleur du skin, sinon couleur du tank. Traînée de la même couleur (`OX_SKIN_TRAIL` dans `oxBulletFx`). La couleur passe déjà par le snapshot, donc tout le monde la voit.

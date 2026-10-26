@@ -479,8 +479,24 @@
     }
     return false;
   }
+  // Le tank ne peut plus entrer dans l'eau (avant : son centre pouvait aller 13 px dans l'eau).
+  // Sur un pont, il doit rester sur le tablier (pas déborder au-dessus de l'eau).
   function ot(e, t) {
-    return no(e, t, -k * 0.6);
+    const n = k * 0.55;
+    if (Oi.length && Ui(e, t, n)) return false;
+    if (!oxOnBridge(e, t, k * 0.8) && Li(e, t) < te.w / 2 + n) return true;
+    for (const o of xn) {
+      const a = e - o.x, i = t - o.y;
+      if (Math.hypot(a, i) < o.f(Math.atan2(i, a)) + n) return true;
+    }
+    return false;
+  }
+  function oxOnBridge(e, t, m) {
+    for (const n of wn) {
+      const o = e - n.x, a = t - n.y, i = Math.cos(-n.ang), l = Math.sin(-n.ang), r = o * i - a * l, h = o * l + a * i;
+      if (Math.abs(r) < Sn / 2 - m && Math.abs(h) < te.w / 2 + 40) return true;
+    }
+    return false;
   }
   function Qo(e, t, n) {
     return vn() ? false : no(e, t, n);
@@ -1382,11 +1398,11 @@
   }
   function Yo(e, t) {
     if (ot(e, t)) return false;
-    for (const n of Ee) if (Math.hypot(n.x - e, n.y - t) < n.r + k * 0.7) return false;
+    for (const n of Ee) if (Math.hypot(n.x - e, n.y - t) < oxTreeHit(n, e - n.x, t - n.y)) return false;
     return true;
   }
   function ws(e, t) {
-    return e > 60 && t > 60 && e < S - 60 && t < S - 60 && !no(e, t, 28) && Ee.every((n) => Math.hypot(n.x - e, n.y - t) > n.r + 26);
+    return e > 60 && t > 60 && e < S - 60 && t < S - 60 && !no(e, t, 28) && Ee.every((n) => Math.hypot(n.x - e, n.y - t) > Math.max(n.r + 26, oxTreeHit(n, e - n.x, t - n.y) + 4));
   }
   function cl(e, t) {
     if (ws(e, t)) return { x: e, y: t };
@@ -1590,7 +1606,7 @@
       }
       n.x = Math.max(k, Math.min(S - k, n.x)), n.y = Math.max(k, Math.min(S - k, n.y));
       for (const l of Ee) {
-        const r = n.x - l.x, h = n.y - l.y, c = Math.hypot(r, h), d = l.r + k;
+        const r = n.x - l.x, h = n.y - l.y, c = Math.hypot(r, h), d = oxTreeHit(l, r, h);
         if (c < d && c > 0) {
           n.x = l.x + r / c * d, n.y = l.y + h / c * d;
           const u = n.vx * r / c + n.vy * h / c;
@@ -1966,6 +1982,37 @@
   function Vt(e) {
     return Math.sin(e * 127.1) * 43758.5453 % 1;
   }
+  // Contour du feuillage d'un arbre (mêmes boules que le dessin, voir Bs/bl) :
+  // le tank s'arrête au bord des feuilles, plus seulement au tronc.
+  function oxTreeProf(o) {
+    if (o._pf) return o._pf;
+    const n = 7 + Math.floor(Math.abs(Vt(o.seed)) * 4), c = [[0, 0, o.r * 0.8]];
+    for (let a = 0; a < n; a++) {
+      const g = a / n * Math.PI * 2 + Vt(o.seed + a) * 0.5, d = o.r * (0.5 + Math.abs(Vt(o.seed * 3 + a)) * 0.35);
+      c.push([Math.cos(g) * d, Math.sin(g) * d, o.r * (0.5 + Math.abs(Vt(o.seed * 7 + a)) * 0.3)]);
+    }
+    const M = 72, raw = [];
+    for (let i = 0; i < M; i++) {
+      const ux = Math.cos(i / M * Math.PI * 2), uy = Math.sin(i / M * Math.PI * 2);
+      let best = 0;
+      for (const [cx, cy, R] of c) {
+        const b = ux * cx + uy * cy, q = R * R - (cx * cx + cy * cy - b * b);
+        q >= 0 && (best = Math.max(best, b + Math.sqrt(q)));
+      }
+      raw.push(best);
+    }
+    const pf = raw.map((_, i) => (raw[(i + M - 2) % M] + raw[(i + M - 1) % M] + raw[i] + raw[(i + 1) % M] + raw[(i + 2) % M]) / 5);
+    return o._pf = pf;
+  }
+  // Distance centre de l'arbre -> centre du tank quand ils se touchent.
+  function oxTreeHit(o, dx, dy) {
+    if (o.r >= 100 || o.seed == null) return o.r + k;
+    const pf = oxTreeProf(o), M = pf.length;
+    let a = Math.atan2(dy, dx) / (Math.PI * 2) * M;
+    a < 0 && (a += M);
+    const i = Math.floor(a) % M, t = a - Math.floor(a);
+    return pf[i] * (1 - t) + pf[(i + 1) % M] * t + k * 0.8;
+  }
   const sa = [];
   function Bs() {
     sa.length = 0;
@@ -2312,12 +2359,13 @@
   function Cl() {
     const e = document.getElementById("heroTank");
     if (!e) return;
-    const t = e.getContext("2d");
-    t.setTransform(1, 0, 0, 1, 0, 0), t.clearRect(0, 0, e.width, e.height);
+    const t = e.getContext("2d"), R = Math.min(2.5, Math.max(1.5, window.devicePixelRatio || 1));
+    e.width !== Math.round(620 * R) && (e.width = Math.round(620 * R), e.height = Math.round(520 * R));
+    t.setTransform(R, 0, 0, R, 0, 0), t.clearRect(0, 0, 620, 520), t.imageSmoothingEnabled = true, t.imageSmoothingQuality = "high";
     let n = t.createRadialGradient(310, 260, 20, 310, 270, 248);
     n.addColorStop(0, "rgba(94,242,255,.32)"), n.addColorStop(0.53, "rgba(58,153,245,.11)"), n.addColorStop(1, "rgba(58,153,245,0)"), t.fillStyle = n, t.beginPath(), t.ellipse(310, 270, 280, 230, 0, 0, Math.PI * 2), t.fill(), t.save(), t.translate(305, 405), t.scale(1, 0.35);
     for (let o = 3; o > 0; o--) t.beginPath(), t.arc(0, 0, 70 + o * 55, 0, Math.PI * 2), t.strokeStyle = ["", "#27dbe9", "#4d8de7", "#a4d4ff"][o], t.globalAlpha = 0.12 + o * 0.035, t.lineWidth = 7, t.stroke();
-    t.restore(), t.globalAlpha = 1, t.save(), t.shadowColor = "rgba(0,8,27,.75)", t.shadowBlur = 32, t.shadowOffsetY = 23, He(t, 292, 292, 140, I.color, -0.62, { skin: I.skin, cannon: I.cannon, hat: I.hat }), t.restore(), [[70, 200, 13], [585, 300, 9], [120, 70, 7], [60, 420, 5], [560, 440, 7]].forEach(([o, a, i], l) => {
+    t.restore(), t.globalAlpha = 1, t.save(), t.shadowColor = "rgba(0,8,27,.75)", t.shadowBlur = 32, t.shadowOffsetY = 23, oxHeroSkin(t) || He(t, 292, 292, 140, I.color, -0.62, { skin: I.skin, cannon: I.cannon, hat: I.hat }), t.restore(), [[70, 200, 13], [585, 300, 9], [120, 70, 7], [60, 420, 5], [560, 440, 7]].forEach(([o, a, i], l) => {
       t.save(), t.translate(o, a), t.rotate(l * 0.7), t.fillStyle = l % 2 ? "#75e9ff" : "#ffde77", t.shadowColor = t.fillStyle, t.shadowBlur = 15, t.beginPath(), t.moveTo(0, -i * 2), t.lineTo(i * 0.45, -i * 0.4), t.lineTo(i * 2, 0), t.lineTo(i * 0.45, i * 0.4), t.lineTo(0, i * 2), t.lineTo(-i * 0.45, i * 0.4), t.lineTo(-i * 2, 0), t.lineTo(-i * 0.45, -i * 0.4), t.closePath(), t.fill(), t.restore();
     });
   }
@@ -3227,7 +3275,7 @@
     }
     e.x += e.vx * o, e.y += e.vy * o, e.x = Math.max(k, Math.min(S - k, e.x)), e.y = Math.max(k, Math.min(S - k, e.y));
     for (const A of Ee) {
-      const M = e.x - A.x, P = e.y - A.y, B = Math.hypot(M, P), L = A.r + k;
+      const M = e.x - A.x, P = e.y - A.y, B = Math.hypot(M, P), L = oxTreeHit(A, M, P);
       if (B < L && B > 0) {
         e.x = A.x + M / B * L, e.y = A.y + P / B * L;
         const m = e.vx * M / B + e.vy * P / B;
@@ -5214,6 +5262,23 @@
     }
     return o.ok ? o.img : null;
   }
+  // Accueil : le gros tank utilise la vignette 256 px (dessin complet) au lieu des calques
+  // 176 px du jeu, qui étaient agrandis ~6 fois et donnaient une image floue / pixelisée.
+  const OXHT = {};
+  function oxHeroSkin(t) {
+    const sk = typeof OX_SKIN_BY_ID !== "undefined" && OX_SKIN_BY_ID[I.skin];
+    if (!sk || !sk.thumb) return false;
+    let o = OXHT[sk.key];
+    if (!o) {
+      o = OXHT[sk.key] = { img: new Image(), ok: false };
+      o.img.onload = () => { o.ok = true; try { Cl(); } catch {} };
+      o.img.src = sk.thumb;
+    }
+    if (!o.ok) return false;
+    const W = 510;
+    t.imageSmoothingEnabled = true, t.imageSmoothingQuality = "high", t.drawImage(o.img, 300 - W / 2, 300 - W / 2, W, W);
+    return true;
+  }
   function oxImgFrame(sk) {
     return sk.frames > 1 ? Math.floor(performance.now() / sk.ms) % sk.frames : 0;
   }
@@ -5225,6 +5290,7 @@
     const im = oxImgOf(sk);
     if (!im) return false;
     const S2 = im.height / 3, f = oxImgFrame(sk), D = OXI_D / 1.15;
+    e.preview && (t.imageSmoothingEnabled = true, t.imageSmoothingQuality = "high");
     t.drawImage(im, f * S2, 0, S2, S2, -D / 2, -D / 2, D, D);
     return true;
   }
@@ -5234,6 +5300,7 @@
     const im = oxImgOf(sk);
     if (!im) return false;
     const S2 = im.height / 3, f = oxImgFrame(sk), D = OXI_D, rec = (e.recoil || 0) * 7;
+    e.preview && (t.imageSmoothingEnabled = true, t.imageSmoothingQuality = "high");
     t.drawImage(im, f * S2, S2, S2, S2, -D / 2 - rec, -D / 2, D, D);
     t.drawImage(im, f * S2, S2 * 2, S2, S2, -D / 2, -D / 2, D, D);
     return true;
@@ -6435,15 +6502,24 @@
     return v != null && oxHas(type, v) ? v : null;
   }
   /* couleur des balles : skin d'arme si équipé (le joueur local) ou annoncé par un joueur distant */
+  /* couleur principale de chaque skin dessiné : balles + traînée de cette couleur quand il est équipé */
+  const OX_SKIN_BULLET = { 40: "#ff4d5e", 41: "#8fd14f", 42: "#8fd8ff", 43: "#e8c27a", 44: "#ff7aa8", 45: "#9b5cff", 46: "#ff9a2e", 47: "#5ce1ff", 48: "#ff6a1a", 49: "#8dff4a", 50: "#ffc43d", 51: "#bfe6ff", 52: "#c06bff", 53: "#4dc3ff", 54: "#ff7ad9" };
+  const OX_SKIN_TRAIL = new Set(Object.values(OX_SKIN_BULLET));
   function oxBulletColor(e) {
     const id = e === p && !e.remote ? oxEquipped("bullet") : e.bsk;
-    return id && OX_BULLETS[id] ? OX_BULLETS[id].c : e.color;
+    if (id && OX_BULLETS[id]) return OX_BULLETS[id].c;   // couleur de balles gagnée au classé : prioritaire
+    return OX_SKIN_BULLET[e.skin] || e.color;
   }
   function oxBulletFx(s2, m) {
     const id = OX_BULLET_BY_COLOR[m.color];
-    if (!id) return;
+    if (!id && !OX_SKIN_TRAIL.has(m.color)) return;
     const sp = Math.hypot(m.vx || 0, m.vy || 0) || 1, ux = (m.vx || 0) / sp, uy = (m.vy || 0) / sp;
     s2.save();
+    if (!id) {
+      const L = 40, g = s2.createLinearGradient(m.x, m.y, m.x - ux * L, m.y - uy * L);
+      g.addColorStop(0, m.color + "d0"), g.addColorStop(1, m.color + "00");
+      s2.strokeStyle = g, s2.lineWidth = 7, s2.lineCap = "round", s2.beginPath(), s2.moveTo(m.x, m.y), s2.lineTo(m.x - ux * L, m.y - uy * L), s2.stroke();
+    }
     if (id === "azur") {
       const g = s2.createLinearGradient(m.x, m.y, m.x - ux * 46, m.y - uy * 46);
       g.addColorStop(0, "rgba(63,216,255,.85)"), g.addColorStop(1, "rgba(63,216,255,0)");

@@ -3697,6 +3697,7 @@
         t.error && (q.err = "Lecture du profil impossible : " + t.error.message), q.profile = t.data || null, q.profile && (q.err = "");
         if (q.profile) try { oxApplySettings(q.profile.settings || null); } catch (er) { console.warn(er); }
         if (q.profile) try { oxBanCheck(q.profile); } catch (er) { console.warn(er); }
+        if (q.profile && q.profile.is_admin === true) try { oxAdminAddSkins(), oxSkinsRefreshUI(); } catch (er) { console.warn(er); }
         const n = await G.from("matches").select("*").eq("user_id", q.user.id).order("created_at", { ascending: false }).limit(5);
         q.matches = n && n.data || [], q.profile && (I.name = q.profile.username, _e && (_e.value = I.name, _e.readOnly = true), fe());
       } else q.profile = null, q.matches = [], _e && (_e.readOnly = false);
@@ -5431,7 +5432,7 @@
         oxSkinsFromCache();
       }
     try { oxRankAddOwned(); } catch {}
-    if (I.skin >= 10 && !OXS.owned.has(I.skin)) {
+    if (I.skin >= 10 && !OXS.owned.has(I.skin) && !(q.user && !q.profile)) {   // profil pas encore chargé : on ne retire rien (un admin garderait son skin)
       I.skin = 0;
       fe();
       p && !K && (p.skin = 0);
@@ -6413,6 +6414,16 @@
   }
   function oxRankAddOwned() {
     for (const r of OX_RANK_REWARDS) if (r.type === "skin" && oxRewardOk(r)) OXS.owned.add(r.id);
+    oxAdminAddSkins();
+  }
+  // admins du jeu (profiles.is_admin, réglé seulement depuis Supabase) : tous les skins, y compris ceux ajoutés plus tard
+  function oxIsAdmin() {
+    return !!(q.user && q.profile && q.profile.is_admin === true);
+  }
+  function oxAdminAddSkins() {
+    if (!oxIsAdmin()) return;
+    OX_SKINS.forEach((sk) => OXS.owned.add(sk.id));
+    OX_RANK_SKINS.forEach((sk) => OXS.owned.add(sk.id));
   }
   function oxEquipped(type) {
     const v = type === "card" ? I.rcard : type === "sound" ? I.rsnd : type === "bullet" ? I.rbul : I.skin;

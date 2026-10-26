@@ -13,7 +13,7 @@ Malo débute en dev : explique-lui les choses **en français, simplement, une é
 | `dist/index-oryxo.html` | Dernière version construite (celle qu'on déploie) |
 | `server/server.js` | (= `/opt/orbit/server.js`) Serveur Node (http + WebSocket `ws`) : sert `public/`, rooms, file d'attente classée, social |
 | `server/public/` | = `/opt/orbit/public` sur le VPS. Fichiers statiques à côté du jeu : `skins/*.webp`, favicon, og-image, robots.txt, sitemap.xml, llms.txt, manifest, pages légales (`mentions-legales.html`, `cgv.html`, `confidentialite.html` + `legal.css`) |
-| `sql/` | Scripts Supabase dans l'ordre où ils ont été donnés (01 → 07). `verification.sql` affiche ✅/❌ pour chacun (à lancer dans le SQL Editor). Tous installés et vérifiés ✅ par Malo le 26/10 (ordre sûr si on réinstalle : 05 puis 04 puis 06, le 04 utilise avatar_url et crown ajoutés par le 05) |
+| `sql/` | Scripts Supabase dans l'ordre où ils ont été donnés (01 → 08). `verification.sql` affiche ✅/❌ pour chacun (à lancer dans le SQL Editor). Tous installés et vérifiés ✅ par Malo le 26/10 (ordre sûr si on réinstalle : 05 puis 04 puis 06, le 04 utilise avatar_url et crown ajoutés par le 05) |
 | `deploy/` | `setup-vps.sh` (installation unique sur le VPS) et `oryxo-deploy.sh` (script qui reçoit et installe une version, copié dans `/usr/local/sbin/oryxo-deploy`) |
 | `.github/workflows/deploy.yml` | Déploiement automatique : chaque push sur `main` qui touche `src/`, `server/`, `build.py` ou `package*.json` construit le jeu et l'envoie sur le VPS |
 | `package.json` | esbuild 0.28.2 fixé (`npm ci` puis `python3 build.py`) |
@@ -176,6 +176,12 @@ Déployé par Malo : jeu `8445d3a08b64…` (commit 12b01cc) + serveur `90ddd578c
 - **Version compacte (26/10)** : bloc CSS « page profil compacte » (avatar 84 px, marges réduites) → 512 px de haut sur ordinateur (testé 1000×600 à 1440×900) ; sur téléphone ≤ 600 px : 3 dernières parties seulement, boutons du compte sur 1 ligne → tient sur un iPhone 13 (390×844), défile un peu sur iPhone SE. Frise : 12 paliers dans la largeur (`li{flex:1 1 0}`) et marge intérieure pour que le halo du rang actuel ne soit plus rogné par la zone de défilement.
 - **Organisation (26/10, validée avec les vraies données de Malo)** : gauche = identité, rang, frise, stats, **badges** ; droite = dernières parties, **amis** (liste compacte, défile à l'intérieur au-delà de ~240 px) ; **bas sur toute la largeur** (`.ox-pfoot`) = boutons du compte. Pastille « 0 » à côté de « Amis » corrigée (`.acc-h .fr-badge[hidden]`), vide sous « Ajouter » supprimé (`.fr-msg:empty`).
 - Tag de clan (`.ox-tag`) : il héritait de l'ombre portée du nom du clan, qui coupait le bas des lettres → `text-shadow:none`.
+
+## Admins (ajouté le 26/10/2026)
+
+- `sql/08-admins.sql` : colonne `profiles.is_admin` (un joueur ne peut pas la modifier : seuls username/avatar_url/updated_at sont modifiables depuis le jeu) + `set_admin(pseudo, true|false)` (SQL Editor seulement). Le script met **RaisedByLamo** admin.
+- Jeu : `oxIsAdmin()` / `oxAdminAddSkins()` (appelé dans `oxRankAddOwned`, donc à chaque recalcul des skins possédés) → un admin possède **tous** les skins de `OX_SKINS` + `OX_RANK_SKINS`, donc automatiquement chaque nouveau skin ajouté au jeu. Le skin équipé n'est plus retiré tant que le profil n'est pas chargé (sinon un admin perdait son skin au rechargement).
+- C'est côté jeu (cosmétique) : les skins des admins ne passent pas par `my_skins` ni Stripe.
 
 ## Tester en local
 

@@ -157,6 +157,10 @@ En BR classé solo (2 joueurs, hôte serveur), acheté en partie : il part (~400
 - Avant : `systemctl restart orbit` restait bloqué en « deactivating (stop-sigterm) » (le serveur ignorait SIGTERM à cause de Chromium/Playwright) ; il fallait `sudo kill -9 <Main PID>`. Le drop-in `TimeoutStopSec=5` ne semblait pas actif (à vérifier : `systemctl show orbit -p TimeoutStopUSec`).
 - Maintenant : `server.js` gère SIGTERM/SIGINT/SIGHUP (ferme Chromium puis quitte, 2 s max) et lance Chromium avec `handleSIGTERM/SIGINT/SIGHUP: false`. Testé : arrêt en 1-2 s.
 
+## En ligne (26/10/2026)
+
+Déployé par Malo : jeu `8445d3a08b64…` (commit 12b01cc) + serveur `90ddd578c4a8…` (arrêt propre), 30 images de skins, `STATS_PASS` ajouté au `.env`, scripts Supabase 01-06 ✅. Vérifier une version en ligne : `sha256sum /opt/orbit/public/index.html /opt/orbit/server.js` sur le VPS. Clé secrète Supabase de nouveau exposée sur une capture le 26/10 → à remplacer (nouvelle clé dans `.env`, puis supprimer l'ancienne dans Supabase).
+
 ## Tester en local
 
 ```

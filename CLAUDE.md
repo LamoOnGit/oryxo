@@ -169,6 +169,11 @@ Déployé par Malo : jeu `8445d3a08b64…` (commit 12b01cc) + serveur `90ddd578c
 - Le même script ajoute `profiles.quests` + `quest_get` / `quest_sync` (quêtes sauvegardées avec le compte, on garde toujours le max) et `player_extras(p_id)` (clan + badges sur la carte joueur).
 - Testé sur PostgreSQL 16 avec 4 joueurs (scénario complet) + affichage de l'onglet Clan avec ces données.
 
+## Page profil + tag de clan (corrigés le 26/10/2026)
+
+- Page profil (`#profile`) : elle débordait en haut quand elle était plus haute que l'écran (le `#overlay` centre verticalement) → `box-sizing:border-box` + hauteur max + défilement interne. Frise « Progression classée » ajoutée sous le rang (`oxTimelineHtml`, comme sur la carte joueur). « Voir les quêtes » à droite du titre Badges (`.ox-bh`), boutons du compte en grille alignée (3 colonnes, 2 + 1 sur téléphone).
+- Tag de clan (`.ox-tag`) : il héritait de l'ombre portée du nom du clan, qui coupait le bas des lettres → `text-shadow:none`.
+
 ## Tester en local
 
 ```

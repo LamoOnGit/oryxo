@@ -5862,10 +5862,13 @@
         const ctx = oxQCtx(), cnt = oxQBadgeCount(OXQ.prog, ctx), row = oxBadgeRow(OXQ.prog, ctx, 8);
         const sec = document.createElement("div");
         sec.className = "ox-prof-badges";
-        sec.innerHTML = '<h3 class="acc-h">Badges <span>' + cnt.n + "/" + cnt.tot + '</span></h3><div class="ox-bdg-row">' + (row || `<span class="ox-empty">Aucun badge pour l'instant.</span>`) + '</div><button type="button" class="prof-mini" data-ox-quests>Voir les qu\xEAtes</button>';
+        sec.innerHTML = '<h3 class="acc-h ox-bh"><span class="ox-bh-t">Badges <span>' + cnt.n + "/" + cnt.tot + '</span></span><button type="button" class="prof-mini" data-ox-quests>Voir les qu\xEAtes</button></h3><div class="ox-bdg-row">' + (row || `<span class="ox-empty">Aucun badge pour l'instant.</span>`) + "</div>";
         sec.querySelector("[data-ox-quests]").onclick = () => oxOpenQuests();
         const ref = host.querySelector(".acc-actions");
         ref ? host.insertBefore(sec, ref) : host.appendChild(sec);
+        // frise de progression classée, comme sur la carte joueur
+        const rk = host.querySelector(".acc-rank");
+        if (rk && !host.querySelector(".pc-tl")) { try { rk.insertAdjacentHTML("afterend", oxTimelineHtml(Object.assign({}, q.profile, { loading: false }))); } catch (er) { console.warn(er); } }
       }
       return r;
     };

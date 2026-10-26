@@ -390,6 +390,20 @@ body.touch-play #specBar{transform:translateX(-50%) scale(.8)}
 .pc-msg:empty{min-height:0;margin:0}
 @media(max-width:520px){.pc-card{padding:24px 16px 16px}.pc-close{top:12px;right:12px}.pc-top{padding-right:46px}.pc-rank{margin:16px 0 12px}}
 </style>
+<style>/* page profil : jamais coupée en haut, éléments alignés */
+#overlay > #profile{box-sizing:border-box;max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow-y:auto;overscroll-behavior:contain;padding-top:62px}
+/* tag de clan : pas d'ombre héritée du nom (elle coupait le bas des lettres) */
+.ox-tag{text-shadow:none;line-height:1.1}
+#profile #profBack{top:16px;left:16px}
+#profile .acc-rank + .pc-tl{margin:12px 0 0}
+.acc-h.ox-bh{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.acc-h.ox-bh .prof-mini{margin:0;flex:none}
+.ox-prof-badges .acc-h .ox-bh-t{color:var(--dim)}
+#profile .ox-bdg-row{margin-top:2px}
+#profile .acc-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:18px}
+#profile .acc-actions>*{display:flex;align-items:center;justify-content:center;text-align:center;margin:0;min-height:36px;padding:6px 8px;box-sizing:border-box}
+@media(max-width:420px){#profile .acc-actions{grid-template-columns:1fr 1fr}#profile .acc-actions>#accLogout{grid-column:1/-1}}
+</style>
 <!-- Statistiques de visite (Umami, sans cookie). Colle ton identifiant de site Umami entre les guillemets de UMAMI_ID. Vide = désactivé. -->
 <script>(function(){var UMAMI_ID='83df179b-0828-4a0c-8e07-3a2e2275e1c1';if(!UMAMI_ID||location.hostname!=='oryxo.eu'||/[?&]serverhost=/.test(location.search))return;var s=document.createElement('script');s.defer=true;s.src='https://cloud.umami.is/script.js';s.setAttribute('data-website-id',UMAMI_ID);document.head.appendChild(s);})();</script>
 </head>

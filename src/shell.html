@@ -409,8 +409,8 @@ body.touch-play #specBar{transform:translateX(-50%) scale(.8)}
 .ox-pcol-l .prof-head{margin-bottom:16px}
 .ox-pcol-l .acc-rank + .pc-tl{margin-top:12px}
 .ox-pcol-r > .acc-h:first-child, #profAcct > .acc-h:first-child{margin-top:0}
-@media(min-width:900px) and (min-height:560px){
-  #overlay > #profile{width:min(940px,94vw);max-width:none;padding:58px 28px 22px}
+@media(min-width:900px) and (min-height:520px){
+  #overlay > #profile{width:min(900px,94vw);max-width:none;padding:52px 26px 18px}
   .ox-pcols{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:start}
   .ox-pcol-r #profAcct > .acc-h{margin-top:0}
   .ox-pcol-r .prof-fr{margin-bottom:0}
@@ -423,6 +423,49 @@ body.touch-play #specBar{transform:translateX(-50%) scale(.8)}
   #profile .prof-avatar canvas,#profile .prof-avatar img{width:100%!important;height:100%!important}
   #profile .acc-matches li{padding:5px 10px}
   #profile .acc-rank{padding:10px 12px}
+}
+</style>
+<style>/* frise de progression : 12 paliers dans la largeur, halo du rang actuel jamais rogné */
+.pc-tl ol{padding:6px 4px 4px;gap:2px}
+.pc-tl li{flex:1 1 0;min-width:0}
+.pc-tl li b{font-size:8.5px}
+.pc-tl li small{font-size:7.5px}
+/* page profil compacte (tient sans défiler) */
+#overlay > #profile{padding-top:52px;padding-bottom:18px}
+#profile #profBack{top:12px;left:14px}
+#profile .prof-head{gap:16px;margin-bottom:12px}
+#profile .prof-avatar{width:84px;height:84px}
+#profile .prof-avatar canvas,#profile .prof-avatar img{width:100%!important;height:100%!important}
+#profile #profName{padding:7px 10px;font-size:18px;margin:0}
+#profile .prof-rank{margin:6px 0}
+#profile .acc-rank{padding:10px 12px}
+#profile .acc-rank-top b{font-size:21px}
+#profile .acc-bar{margin-top:8px;height:8px}
+#profile .acc-rank + .pc-tl{margin-top:10px}
+#profile .acc-stats{margin-top:10px;gap:8px}
+#profile .acc-stats .pstat{padding:8px 4px;gap:4px}
+#profile .acc-stats .pstat b{font-size:19px}
+#profile .acc-h{margin:14px 0 6px}
+#profile .acc-matches li{padding:5px 12px}
+#profile .acc-actions{margin-top:12px}
+#profile .acc-msg:empty{min-height:0;margin:0}
+#profile .ox-bdg-row .ox-badge{width:34px;height:34px}
+@media(min-width:900px) and (min-height:520px){.ox-pcols{gap:22px}}
+@media(max-width:600px){
+  #profile .acc-matches li:nth-child(n+4){display:none}          /* téléphone : 3 dernières parties */
+  #profile .prof-avatar{width:72px;height:72px}
+  #overlay > #profile{padding:48px 14px 14px}
+  #profile .acc-actions{grid-template-columns:repeat(3,1fr)!important;gap:6px}
+  #profile .acc-actions>*{font-size:10.5px;padding:5px 4px;min-height:32px}
+  #profile .acc-actions>#accLogout{grid-column:auto!important}
+  #profile .acc-h{margin:10px 0 5px}
+  #profile .pc-tl{padding:7px 7px 5px}
+  #profile .pc-tl-h{margin-bottom:2px}
+  #profile .acc-stats .pstat{padding:6px 2px}
+  #profile .acc-stats .pstat b{font-size:17px}
+  #profile .acc-rank + .pc-tl,#profile .acc-stats{margin-top:8px}
+  #profile .prof-head{margin-bottom:10px}
+  #profile .acc-actions{margin-top:10px}
 }
 </style>
 <!-- Statistiques de visite (Umami, sans cookie). Colle ton identifiant de site Umami entre les guillemets de UMAMI_ID. Vide = désactivé. -->

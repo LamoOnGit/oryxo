@@ -6517,7 +6517,10 @@
     s2.save();
     if (!id) {
       const L = 40, g = s2.createLinearGradient(m.x, m.y, m.x - ux * L, m.y - uy * L);
-      g.addColorStop(0, m.color + "d0"), g.addColorStop(1, m.color + "00");
+      if (m.color === OX_SKIN_BULLET[54]) {   // Prisme : traînée arc-en-ciel qui tourne
+        const h0 = performance.now() / 4 % 360;
+        g.addColorStop(0, "hsla(" + h0 + ",100%,65%,.9)"), g.addColorStop(0.5, "hsla(" + (h0 + 120) + ",100%,65%,.6)"), g.addColorStop(1, "hsla(" + (h0 + 240) + ",100%,65%,0)");
+      } else g.addColorStop(0, m.color + "d0"), g.addColorStop(1, m.color + "00");
       s2.strokeStyle = g, s2.lineWidth = 7, s2.lineCap = "round", s2.beginPath(), s2.moveTo(m.x, m.y), s2.lineTo(m.x - ux * L, m.y - uy * L), s2.stroke();
     }
     if (id === "azur") {

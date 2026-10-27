@@ -6506,9 +6506,9 @@
   const OX_SKIN_BULLET = { 40: "#ff4d5e", 41: "#8fd14f", 42: "#8fd8ff", 43: "#e8c27a", 44: "#ff7aa8", 45: "#9b5cff", 46: "#ff9a2e", 47: "#5ce1ff", 48: "#ff6a1a", 49: "#8dff4a", 50: "#ffc43d", 51: "#bfe6ff", 52: "#c06bff", 53: "#4dc3ff", 54: "#ff7ad9" };
   const OX_SKIN_TRAIL = new Set(Object.values(OX_SKIN_BULLET));
   function oxBulletColor(e) {
+    if (OX_SKIN_BULLET[e.skin]) return OX_SKIN_BULLET[e.skin];   // skin dessiné équipé : il décide de la couleur (règle de Malo)
     const id = e === p && !e.remote ? oxEquipped("bullet") : e.bsk;
-    if (id && OX_BULLETS[id]) return OX_BULLETS[id].c;   // couleur de balles gagnée au classé : prioritaire
-    return OX_SKIN_BULLET[e.skin] || e.color;
+    return id && OX_BULLETS[id] ? OX_BULLETS[id].c : e.color;
   }
   function oxBulletFx(s2, m) {
     const id = OX_BULLET_BY_COLOR[m.color];

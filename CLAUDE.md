@@ -205,3 +205,11 @@ Avec `pkill`, ancrer le motif (`pkill -f "^node server.js"`), sinon on tue son p
 - **Accueil** : le gros tank avec un skin dessiné utilise la vignette `_thumb.webp` (256 px, `oxHeroSkin`) au lieu des calques 176 px agrandis ~6× ; canvas `#heroTank` à la résolution de l'écran (×DPR). Pour encore plus net : il faudrait les dessins originaux 512 px de Malo (faire des `_hd.webp`).
 - **« ? » de « Prêt à dominer »** : `em` en `inline-block`, petit espace, italique comme le reste.
 - **Balles de la couleur du skin** : `OX_SKIN_BULLET` (id 40-54 → couleur), `oxBulletColor` = couleur du skin dessiné s il y en a un (prioritaire, même si « Traceurs azur » est équipé : c était la cause des balles bleues de Malo le 27/10), sinon couleur de balles gagnée au classé, sinon couleur du tank. Traînée de la même couleur (`OX_SKIN_TRAIL` dans `oxBulletFx`), arc-en-ciel qui tourne pour Prisme. Le 27/10 Malo voyait encore des balles bleues avec Prisme : la version n était pas en ligne (le déploiement GitHub construit mais n envoie rien tant que les secrets `VPS_SSH_KEY`/`VPS_KNOWN_HOSTS` manquent). La couleur passe déjà par le snapshot, donc tout le monde la voit.
+
+## Fluidité avec les skins (corrigé le 27/10/2026)
+
+- Cause : chaque tank à skin dessiné copiait son morceau dans la **grande planche** (16 images × 3 calques, ex. 2816×528) à chaque image. Dessin d'une image avec 12 tanks à skin : ~21 ms → ~1 ms une fois corrigé (test logiciel). **`oxImgCell`** découpe chaque (skin, image d'animation, calque) une seule fois dans un petit canvas gardé en mémoire (`OXI_CELLS`).
+- Pseudos au-dessus des tanks pré-dessinés (`oxNameTag`, cache `OX_TAGS`, vidé quand la police arrive). Avant : `strokeText` + `fillText` par tank et par image.
+- Balles du classé (azur, fusion, étoile) : halo en simple cercle transparent au lieu de `shadowBlur` (très lent).
+- **Résolution automatique** (`OXRES`, `oxQualityTick` dans `Os`) : en partie, si plus de la moitié des images dépassent 22 ms sur ~2 s, la résolution du canvas baisse (1,5 → 1,25 → 1). Ne remonte pas pendant la session.
+- L'hôte serveur ne dessine rien (`SERVER_HOST`), donc ces changements ne touchent que les joueurs.

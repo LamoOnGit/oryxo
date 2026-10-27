@@ -184,8 +184,18 @@
   }
   const ct = document.getElementById("c"), s = ct.getContext("2d");
   let he = 0, de = 0, yn = 1;
+  // Fluidité : si l'appareil n'arrive pas à suivre en partie (moins de ~45 images/s pendant 2 s),
+  // on baisse un peu la résolution du dessin (1,5 → 1,25 → 1). Ça ne change rien au jeu lui-même.
+  const OXRES = { cap: 1.5, n: 0, slow: 0 };
+  function oxQualityTick(ms) {
+    if (ms > 200 || OXRES.cap <= 1 || (window.devicePixelRatio || 1) <= 1) return;
+    OXRES.n++, ms > 22 && OXRES.slow++;
+    if (OXRES.n < 120) return;
+    if (OXRES.slow > 60) OXRES.cap = Math.max(1, OXRES.cap - 0.25), _a();
+    OXRES.n = OXRES.slow = 0;
+  }
   function _a() {
-    yn = Math.min(1.5, window.devicePixelRatio || 1), he = innerWidth, de = innerHeight, ct.width = he * yn, ct.height = de * yn, s.setTransform(yn, 0, 0, yn, 0, 0);
+    yn = Math.min(OXRES.cap, window.devicePixelRatio || 1), he = innerWidth, de = innerHeight, ct.width = he * yn, ct.height = de * yn, s.setTransform(yn, 0, 0, yn, 0, 0);
   }
   addEventListener("resize", _a), _a();
   const N = [], Se = [], tt = [], Ee = [], Le = [], Ze = [], Ge = [];
@@ -1774,6 +1784,26 @@
     e.x = t.x, e.y = t.y, e.vx = e.vy = 0, e.hp = xe, e.alive = true, e.cd = 0.5, e.guard = 0, e.noFire = 0, e.inventory = [], e.effects = {}, e.holdT = 0, e.reviveReady = false, e.combo = 0, e.comboT = 0, e._lastStandUsed = false, e.effects.spawn = v.SPAWN_PROTECT;
   }
   const ea = '"Lilita One","Arial Black",sans-serif';
+  // Fluidité : pseudo au-dessus des tanks pré-dessiné une fois (texte + contour), puis simple copie d'image.
+  const OX_TAGS = new Map();
+  // la police du jeu peut arriver après les premiers dessins : on refait alors les pseudos
+  try { document.fonts && document.fonts.addEventListener("loadingdone", () => OX_TAGS.clear()); } catch {}
+  function oxNameTag(t, name, col, x, y) {
+    name = String(name || "");
+    const key = name + "|" + col;
+    let c = OX_TAGS.get(key);
+    if (!c) {
+      if (OX_TAGS.size > 300) OX_TAGS.clear();
+      const R = 2, m = document.createElement("canvas").getContext("2d");
+      m.font = `15px ${ea}`;
+      const w = Math.ceil(m.measureText(name).width) + 10;
+      c = document.createElement("canvas"), c.width = w * R, c.height = 26 * R;
+      const g = c.getContext("2d");
+      g.scale(R, R), g.font = `15px ${ea}`, g.textAlign = "center", g.textBaseline = "alphabetic", g.lineJoin = "round", g.lineWidth = 4.5, g.strokeStyle = "#1c2342", g.strokeText(name, w / 2, 19), g.fillStyle = col, g.fillText(name, w / 2, 19);
+      c._w = w, OX_TAGS.set(key, c);
+    }
+    t.drawImage(c, x - c._w / 2, y - 19, c._w, 26);
+  }
   function Ts(e, t) {
     const n = parseInt(e.slice(1), 16), o = n >> 16 & 255, a = n >> 8 & 255, i = n & 255;
     return `rgb(${o * t | 0},${a * t | 0},${i * t | 0})`;
@@ -1859,7 +1889,7 @@
     }
     const h = e.hat || 0;
     if (h === 1 ? (t.strokeStyle = "#1c2342", t.lineWidth = 4, t.beginPath(), t.moveTo(k * 0.4, -k * 0.8), t.lineTo(k * 0.75, -k * 1.45), t.stroke(), t.fillStyle = "#ff5c5c", t.beginPath(), t.arc(k * 0.78, -k * 1.5, 5, 0, Math.PI * 2), t.fill(), t.strokeStyle = "#1c2342", t.lineWidth = 2, t.stroke()) : h === 2 && (t.fillStyle = "#1c2342", t.beginPath(), t.roundRect(-k * 0.9, -k * 0.45, k * 1.8, k * 0.55, 5), t.fill(), t.fillStyle = "#4de3ff", t.beginPath(), t.roundRect(-k * 0.75, -k * 0.35, k * 1.5, k * 0.35, 3), t.fill()), e.crown && !e.preview && (t.save(), t.translate(0, -k - 44), t.fillStyle = "#1c2342", t.beginPath(), t.moveTo(-14, 6), t.lineTo(-14, -8), t.lineTo(-7, -2), t.lineTo(0, -12), t.lineTo(7, -2), t.lineTo(14, -8), t.lineTo(14, 6), t.closePath(), t.fill(), t.fillStyle = "#ffcc33", t.beginPath(), t.moveTo(-11, 3), t.lineTo(-11, -4), t.lineTo(-6, 1), t.lineTo(0, -8), t.lineTo(6, 1), t.lineTo(11, -4), t.lineTo(11, 3), t.closePath(), t.fill(), t.restore()), !e.preview) {
-      t.font = `15px ${ea}`, t.textAlign = "center", t.lineJoin = "round", t.lineWidth = 4.5, t.strokeStyle = "#1c2342", t.strokeText(e.name, 0, -k - 22), t.fillStyle = e === p ? "#ffcc33" : p && ve(e, p) ? "#5ef58a" : "#fff", t.fillText(e.name, 0, -k - 22), t.fillStyle = "#1c2342", t.beginPath(), t.roundRect(-30, -k - 16, 60, 10, 5), t.fill();
+      oxNameTag(t, e.name, e === p ? "#ffcc33" : p && ve(e, p) ? "#5ef58a" : "#fff", 0, -k - 22), t.fillStyle = "#1c2342", t.beginPath(), t.roundRect(-30, -k - 16, 60, 10, 5), t.fill();
       const c = 52 * e.hp / xe;
       c > 1 && (t.fillStyle = e.hp > 35 ? "#4be37a" : "#ff5c5c", t.beginPath(), t.roundRect(-26, -k - 14, c, 6, 3), t.fill(), t.fillStyle = "rgba(255,255,255,.4)", t.beginPath(), t.roundRect(-26, -k - 14, c, 2, 1), t.fill());
     }
@@ -2236,6 +2266,7 @@
   }
   function Os(e) {
     const t = Math.min(0.05, (e - fs) / 1e3 || 0);
+    K && p && le.classList.contains("hidden") && !document.hidden && oxQualityTick(e - fs);
     if (fs = e, !K || f && f.finished) {
       const n = document.getElementById("specBar");
       n && n.style.display !== "none" && (n.style.display = "none");
@@ -5284,6 +5315,20 @@
   }
   /* dimensions : 430 px source = cadre complet ; 0.219 unité de jeu par pixel source */
   const OXI_D = 430 * 0.219;
+  // Fluidité : chaque image (skin × image d'animation × calque) est découpée UNE fois dans la grande
+  // planche et gardée en mémoire. Dessiner un morceau de la planche à chaque image coûtait ~20× plus cher.
+  const OXI_CELLS = new Map();
+  function oxImgCell(sk, im, f, layer) {
+    const key = sk.key + ":" + f + ":" + layer;
+    let c = OXI_CELLS.get(key);
+    if (!c) {
+      const S2 = im.height / 3;
+      c = document.createElement("canvas"), c.width = c.height = S2;
+      c.getContext("2d").drawImage(im, f * S2, layer * S2, S2, S2, 0, 0, S2, S2);
+      OXI_CELLS.set(key, c);
+    }
+    return c;
+  }
   function oxImgHull(t, e) {
     const sk = typeof OX_IMG_SKINS !== "undefined" && OX_IMG_SKINS && OX_SKIN_BY_ID[e.skin];
     if (!sk || !sk.img) return false;
@@ -5291,7 +5336,7 @@
     if (!im) return false;
     const S2 = im.height / 3, f = oxImgFrame(sk), D = OXI_D / 1.15;
     e.preview && (t.imageSmoothingEnabled = true, t.imageSmoothingQuality = "high");
-    t.drawImage(im, f * S2, 0, S2, S2, -D / 2, -D / 2, D, D);
+    t.drawImage(oxImgCell(sk, im, f, 0), -D / 2, -D / 2, D, D);
     return true;
   }
   function oxImgTurret(t, e) {
@@ -5301,8 +5346,8 @@
     if (!im) return false;
     const S2 = im.height / 3, f = oxImgFrame(sk), D = OXI_D, rec = (e.recoil || 0) * 7;
     e.preview && (t.imageSmoothingEnabled = true, t.imageSmoothingQuality = "high");
-    t.drawImage(im, f * S2, S2, S2, S2, -D / 2 - rec, -D / 2, D, D);
-    t.drawImage(im, f * S2, S2 * 2, S2, S2, -D / 2, -D / 2, D, D);
+    t.drawImage(oxImgCell(sk, im, f, 1), -D / 2 - rec, -D / 2, D, D);
+    t.drawImage(oxImgCell(sk, im, f, 2), -D / 2, -D / 2, D, D);
     return true;
   }
   const OXS = { owned: /* @__PURE__ */ new Set(), uid: null };
@@ -6527,18 +6572,18 @@
       const g = s2.createLinearGradient(m.x, m.y, m.x - ux * 46, m.y - uy * 46);
       g.addColorStop(0, "rgba(63,216,255,.85)"), g.addColorStop(1, "rgba(63,216,255,0)");
       s2.strokeStyle = g, s2.lineWidth = 7, s2.lineCap = "round", s2.beginPath(), s2.moveTo(m.x, m.y), s2.lineTo(m.x - ux * 46, m.y - uy * 46), s2.stroke();
-      s2.shadowColor = "#3fd8ff", s2.shadowBlur = 16, s2.fillStyle = "rgba(160,240,255,.9)", s2.beginPath(), s2.arc(m.x, m.y, Dt + 2, 0, Math.PI * 2), s2.fill();
+      s2.globalAlpha = 0.35, s2.fillStyle = "#3fd8ff", s2.beginPath(), s2.arc(m.x, m.y, Dt + 9, 0, Math.PI * 2), s2.fill(), s2.globalAlpha = 1, s2.fillStyle = "rgba(160,240,255,.9)", s2.beginPath(), s2.arc(m.x, m.y, Dt + 2, 0, Math.PI * 2), s2.fill();
     } else if (id === "fusion") {
       const g = s2.createLinearGradient(m.x, m.y, m.x - ux * 38, m.y - uy * 38);
       g.addColorStop(0, "rgba(255,190,60,.9)"), g.addColorStop(1, "rgba(255,60,0,0)");
       s2.strokeStyle = g, s2.lineWidth = 9, s2.lineCap = "round", s2.beginPath(), s2.moveTo(m.x, m.y), s2.lineTo(m.x - ux * 38, m.y - uy * 38), s2.stroke();
       if (Math.random() < 0.35) tt.push({ x: m.x, y: m.y, vx: (Math.random() - 0.5) * 60 - ux * 40, vy: (Math.random() - 0.5) * 60 - uy * 40, life: 0.35, max: 0.35, color: Math.random() < 0.5 ? "#ffb000" : "#ff5a14", r: 2 + Math.random() * 2 });
-      s2.shadowColor = "#ff7a1a", s2.shadowBlur = 18, s2.fillStyle = "#ffd36a", s2.beginPath(), s2.arc(m.x, m.y, Dt + 1, 0, Math.PI * 2), s2.fill();
+      s2.globalAlpha = 0.35, s2.fillStyle = "#ff7a1a", s2.beginPath(), s2.arc(m.x, m.y, Dt + 9, 0, Math.PI * 2), s2.fill(), s2.globalAlpha = 1, s2.fillStyle = "#ffd36a", s2.beginPath(), s2.arc(m.x, m.y, Dt + 1, 0, Math.PI * 2), s2.fill();
     } else if (id === "etoile") {
       const g = s2.createLinearGradient(m.x, m.y, m.x - ux * 60, m.y - uy * 60);
       g.addColorStop(0, "rgba(255,241,166,.9)"), g.addColorStop(0.5, "rgba(229,153,247,.45)"), g.addColorStop(1, "rgba(77,171,247,0)");
       s2.strokeStyle = g, s2.lineWidth = 6, s2.lineCap = "round", s2.beginPath(), s2.moveTo(m.x, m.y), s2.lineTo(m.x - ux * 60, m.y - uy * 60), s2.stroke();
-      s2.translate(m.x, m.y), s2.rotate(performance.now() / 120), s2.shadowColor = "#fff1a6", s2.shadowBlur = 18, s2.fillStyle = "#fff8d2";
+      s2.translate(m.x, m.y), s2.globalAlpha = 0.3, s2.fillStyle = "#fff1a6", s2.beginPath(), s2.arc(0, 0, 14, 0, Math.PI * 2), s2.fill(), s2.globalAlpha = 1, s2.rotate(performance.now() / 120), s2.fillStyle = "#fff8d2";
       s2.beginPath();
       for (let i = 0; i < 10; i++) { const rr = i % 2 ? 4 : 10, a = i / 10 * Math.PI * 2; s2.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
       s2.closePath(), s2.fill();

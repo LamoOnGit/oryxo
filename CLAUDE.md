@@ -213,3 +213,15 @@ Avec `pkill`, ancrer le motif (`pkill -f "^node server.js"`), sinon on tue son p
 - Balles du classé (azur, fusion, étoile) : halo en simple cercle transparent au lieu de `shadowBlur` (très lent).
 - **Résolution automatique** (`OXRES`, `oxQualityTick` dans `Os`) : en partie, si plus de la moitié des images dépassent 22 ms sur ~2 s, la résolution du canvas baisse (1,5 → 1,25 → 1). Ne remonte pas pendant la session.
 - L'hôte serveur ne dessine rien (`SERVER_HOST`), donc ces changements ne touchent que les joueurs.
+
+## Fluidité en ligne (corrigé le 28/10/2026)
+
+Mesuré avec un BR à 2 joueurs en local (`TEST_LAG=35 TEST_JIT=30`, et `15/3`) : tank qui roule tout droit vu par l'autre joueur, à-coups max par image **3,6-5,5 px avant → 0,3-0,6 px après** (connexion stable : 4,4 → 0,3 px). Ton propre tank : inchangé (déjà régulier).
+- **Cause principale** : l'hôte jouait les « pas » de mouvement d'un joueur au moment où ils arrivaient, et en entier. Paquets en retard = rattrapage de 120 ms d'un coup ; appareil à 30 images/s = pas de 33 ms joués d'un bloc toutes les 2 frames de l'hôte → avance / arrêt / avance chez les autres.
+- **Hôte (`Es`, branche `n.remote && n.stepQ`)** : réserve adaptative `n.inBuf` (45 ms au départ, 30-80 ms selon la régularité du joueur, ajustée chaque seconde via `n.inLow`), lecture à vitesse ×0,55 à ×1,5 selon le remplissage, max ~1,6× le temps réel par frame (sauf retard > 300 ms). Un pas peut être montré en plusieurs morceaux : il est **calculé en entier** sur une copie (`r[6]`, même résultat exact que la prédiction du joueur — découper la physique en petits pas allait ~11 % plus loin), puis le tank glisse vers ce résultat (`r[5]` = déjà joué, `r[7]/r[8]` = dernière position posée pour garder une poussée extérieure).
+- **`n.ack`** = état exact (x, y, vx, vy, moveT) à la fin du dernier pas complet, envoyé au joueur en `g[id][10]` ; le joueur se recale dessus (au lieu de la position publique, qui peut être au milieu d'un pas). Remis à `null` à la mort.
+- **Heure des snapshots** = `f.simT` (heure du dernier calcul `Es`) au lieu de l'heure d'envoi (écart variable de 0-16 ms → à-coups).
+- **Horloge d'affichage lissée chez le joueur** (`f.rt` dans `_l`) : avance au rythme réel, se recale doucement (sautait à chaque changement de délai / d'horloge).
+- Positions des tanks dans les snapshots au 1/10 de px (`Ve`) au lieu de l'entier.
+- Le joueur envoie ses touches 60×/s (`ba = 60`, avant 30) : paquets plus petits et plus réguliers.
+- Tests : `scratchpad/t7/sbr.js` + `runv.sh` (BR 2 joueurs, mesure écart à la ligne droite et à-coups), `det.js` (hôte = prédiction au 1/100 px).

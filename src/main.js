@@ -1540,6 +1540,8 @@
     e.ax = o / l, e.ay = a / l;
   }
   function Es(e) {
+    // heure exacte du calcul : envoyée avec les positions (snapshot), pour que les autres joueurs les placent au bon moment
+    f && (f.simT = performance.now());
     if (No++, p && p.alive) {
       let n = 0, o = 0;
       if ((ue[Q.up.code] || ue.ArrowUp) && (o -= 1), (ue[Q.down.code] || ue.ArrowDown) && (o += 1), (ue[Q.left.code] || ue.ArrowLeft) && (n -= 1), (ue[Q.right.code] || ue.ArrowRight) && (n += 1), wt) {
@@ -1563,7 +1565,7 @@
     }
     for (const n of N) {
       if (!n.alive) {
-        n.stepQ && n.stepQ.length && (n.lastSeq = n.stepQ[n.stepQ.length - 1][3], n.stepQ.length = 0), n.respawnIn -= e, n.respawnIn <= 0 && n.isBot && (ce === "ffa" || ce === "train") && $o(n);
+        n.ack = null, n.stepQ && n.stepQ.length && (n.lastSeq = n.stepQ[n.stepQ.length - 1][3], n.stepQ.length = 0), n.respawnIn -= e, n.respawnIn <= 0 && n.isBot && (ce === "ffa" || ce === "train") && $o(n);
         continue;
       }
       if (ne(n, "kamikaze") && (N.some((r) => r !== n && r.alive && !ve(r, n) && Math.hypot(r.x - n.x, r.y - n.y) < k * 2 + 45) || n.effects.kamikaze <= e * 1.5) && (n.effects.kamikaze = 0, Ms(n), !n.alive)) continue;
@@ -1592,12 +1594,50 @@
       n.guard > 0 && (n.guard = Math.max(0, n.guard - Ai * e)), n.comboT > 0 && (n.comboT -= e, n.comboT <= 0 && (n.combo = 0)), Ue(n, "laststand") && n.hp / xe < v.LAST_STAND_THRESHOLD && !n._lastStandUsed && (n._lastStandUsed = true, me(n, "shieldBonus", 1e9), n === p && Te(n, " Last Stand", "#5ac8ff")), n.hp / xe > v.LAST_STAND_THRESHOLD + 0.1 && (n._lastStandUsed = false), n.score += e * 2, n.isBot && (n.money = (n.money || 0) + e * 2 * v.COIN_PER_SCORE, n.shopT = (n.shopT || ye(4, 9)) - e, n.shopT <= 0 && (n.shopT = ye(6, 12), Ki(n)));
       const a = n.x, i = n.y;
       if (n.remote && n.stepQ) {
-        n.stepCarry = Math.min(0.12, (n.stepCarry || 0) + e);
+        // Entrées du joueur jouées à vitesse régulière (petite réserve de ~45 ms) : un paquet en retard ne fait
+        // plus « sauter » le tank chez les autres. Réserve pleine → un peu plus vite (max ×1,5), vide → un peu plus lent.
         let l = 0;
         for (const r of n.stepQ) l += r[2];
-        for (l > 0.15 && (n.stepCarry += l - 0.15); n.stepQ.length && n.stepQ[0][2] <= n.stepCarry + 1e-6; ) {
-          const r = n.stepQ.shift();
-          n.stepCarry -= r[2], Ta(n, r[0], r[1], r[2], n, r[4]), n.lastSeq = r[3];
+        // réserve adaptative : elle grandit si la file se vide souvent (ping irrégulier), rétrécit si la connexion est stable
+        const T = n.inBuf || (n.inBuf = 0.045), rate = l > T ? 1 + Math.min(0.5, (l - T) * 5) : Math.max(0.55, 1 - (T - l) * 10);
+        n.stepCarry = Math.min(0.12, (n.stepCarry || 0) + e * rate);
+        l > 0.3 && (n.stepCarry += l - 0.3);   // très gros retard (onglet en pause…) : on rattrape d'un coup comme avant
+        // Un pas peut être joué en plusieurs morceaux (ex. pas de 33 ms d'un appareil à 30 images/s, montré en 2 × 16 ms) :
+        // les autres voient le tank avancer régulièrement. Le pas est calculé EN ENTIER (même résultat exact que chez
+        // le joueur), puis le tank glisse vers ce résultat. À la fin du pas, l'état exact est gardé dans n.ack
+        // (envoyé au joueur pour son recalage).
+        for (let used = 0, budget = l > 0.3 ? 1e9 : e * 1.6 + 0.004; n.stepQ.length && used < budget; ) {
+          const r = n.stepQ[0], done = r[5] || 0, rem = r[2] - done;
+          if (!r[6]) {
+            const s1 = { x: n.x, y: n.y, vx: n.vx || 0, vy: n.vy || 0, moveT: n.moveT || 0, kx: n.kx || 0, ky: n.ky || 0 };
+            Ta(s1, r[0], r[1], r[2], n, r[4]), r[6] = [n.x, n.y, s1], r[7] = n.x, r[8] = n.y;
+          } else {
+            // poussé par autre chose entre deux morceaux (collision…) : on garde ce décalage
+            const ex = n.x - r[7], ey = n.y - r[8];
+            r[6][0] += ex, r[6][1] += ey, r[6][2].x += ex, r[6][2].y += ey;
+          }
+          const s0x = r[6][0], s0y = r[6][1], s1 = r[6][2];
+          if (rem <= n.stepCarry + 1e-6 && used + rem <= budget + 1e-6) {
+            n.stepQ.shift(), n.stepCarry -= rem, used += rem;
+            n.x = s1.x, n.y = s1.y, n.vx = s1.vx, n.vy = s1.vy, n.moveT = s1.moveT, n.kx = s1.kx, n.ky = s1.ky, n.lastSeq = r[3];
+            n.ack = [Ve(n.x), Ve(n.y), Ve(n.vx), Ve(n.vy), Ve(n.moveT || 0)];
+          } else {
+            const part = Math.min(n.stepCarry, budget - used, rem);
+            if (part < 0.002) break;
+            r[5] = done + part, n.stepCarry -= part, used += part;
+            const u = r[2] > 0 ? r[5] / r[2] : 1;
+            n.x = s0x + (s1.x - s0x) * u, n.y = s0y + (s1.y - s0y) * u, r[7] = n.x, r[8] = n.y;
+            break;
+          }
+        }
+        {
+          let left = 0;
+          for (const r of n.stepQ) left += r[2];
+          n.inLow = Math.min(n.inLow == null ? 1 : n.inLow, left), n.inWin = (n.inWin || 0) + e;
+          if (n.inWin >= 1) {
+            n.inLow < 0.004 ? n.inBuf = Math.min(0.08, n.inBuf + 0.01) : n.inLow > 0.03 && (n.inBuf = Math.max(0.03, n.inBuf - 0.006));
+            n.inWin = 0, n.inLow = null;
+          }
         }
       } else {
         const l = v.FEATURES.ice, r = l ? 650 : 1800;
@@ -2757,7 +2797,7 @@
     $o(p), p.kills = 0, In(), p.weapon = ft(), p.powerups = dt(), p.cls = null, zt(p), St(p), le.classList.add("hidden"), K = true, pt.hidden = false, An();
   };
   var f = { role: null, ws: null, myId: null, room: "", starting: false, meNid: null, snaps: [], seq: 0, stepN: 0, steps: [], hist: [], sendAcc: 0, pred: null, off: { x: 0, y: 0 }, lastSnapAt: 0, localCd: 0, sentAt: /* @__PURE__ */ new Map(), rtt: 0, wasAlive: true, lastKills: 0, pickupBorn: /* @__PURE__ */ new Map(), ev: [], guests: /* @__PURE__ */ new Map(), sendTimer: null };
-  const Ln = 30, ba = 30;
+  const Ln = 30, ba = 60;   // ba : envois des touches par seconde (60 = paquets plus petits et plus réguliers)
   function ht() {
     return !!f && f.role === "host";
   }
@@ -3062,12 +3102,12 @@
       return;
     }
     if (f.ws.bufferedAmount > 64 * 1024) return;
-    const e = performance.now(), t = (f.snapN = (f.snapN || 0) + 1) % Ln === 0, n = [], o = [];
+    const e = f.simT || performance.now(), t = (f.snapN = (f.snapN || 0) + 1) % Ln === 0, n = [], o = [];
     for (const A of N) {
-      const M = [A.nid, j(A.x), j(A.y), Math.round(A.angle * 100) / 100, Math.ceil(A.hp), A.alive ? 1 : 0, Ql(A), j(A.guard || 0), Ve(A.guardHit || 0), Ve(A.recoil || 0), j(A.score), A.kills, A._laser && e - A._laser.at < 60 ? [Math.round(A._laser.a * 100) / 100, j(A._laser.end), A._laser.big ? 1 : 0] : 0], P = [A.name, A.color, A.skin | 0, A.cannon | 0, A.hat | 0, A.weapon, (A.powerups || []).join(","), A.cls ? A.cls.id : "", A.team == null ? -1 : A.team, A.deadBy || "", A.isBot ? 1 : 0, A.crown ? 1 : 0], B = JSON.stringify(P), L = M.concat(P);
+      const M = [A.nid, Ve(A.x), Ve(A.y), Math.round(A.angle * 100) / 100, Math.ceil(A.hp), A.alive ? 1 : 0, Ql(A), j(A.guard || 0), Ve(A.guardHit || 0), Ve(A.recoil || 0), j(A.score), A.kills, A._laser && e - A._laser.at < 60 ? [Math.round(A._laser.a * 100) / 100, j(A._laser.end), A._laser.big ? 1 : 0] : 0], P = [A.name, A.color, A.skin | 0, A.cannon | 0, A.hat | 0, A.weapon, (A.powerups || []).join(","), A.cls ? A.cls.id : "", A.team == null ? -1 : A.team, A.deadBy || "", A.isBot ? 1 : 0, A.crown ? 1 : 0], B = JSON.stringify(P), L = M.concat(P);
       n.push(L), o.push(B !== A._nst ? L : M), A._nst = B;
     }
-    const a = Se.map((A) => [j(A.x), j(A.y), j(A.vx), j(A.vy), A.r || Dt, A.color, (A.rocket ? 1 : 0) | (A.boomer ? 2 : 0) | (A.trail ? 4 : 0) | (A.fake ? 8 : 0) | (A.knife ? 16 : 0) | (A.special ? 32 : 0), A.owner && A.owner.nid || 0, Math.min(999, Math.round(performance.now() - (A.born || 0))), A.id || (A.id = f.bid = ((f.bid || 0) + 1) % 1e6)]), i = Ze.map((A) => [j(A.x), j(A.y), A.kind || "bonus", A.id]), l = Ge.map((A) => [j(A.x), j(A.y), Ve(A.angle), A.color, A.skin | 0, A.cannon | 0, A.hat | 0]), r = (A) => [Ve(A.vx), Ve(A.vy), Ve(A.moveT || 0), A.inventory, Ve(A.ultCd || 0), Ve(A.heat || 0), A.overheated ? 1 : 0, A.lastSeq | 0, A.combo | 0, A.wal ? (oxWalTick(A), oxWalCoins(A)) : null], h = { t: "s", ts: Math.round(e), tk: o, c: l };
+    const a = Se.map((A) => [j(A.x), j(A.y), j(A.vx), j(A.vy), A.r || Dt, A.color, (A.rocket ? 1 : 0) | (A.boomer ? 2 : 0) | (A.trail ? 4 : 0) | (A.fake ? 8 : 0) | (A.knife ? 16 : 0) | (A.special ? 32 : 0), A.owner && A.owner.nid || 0, Math.min(999, Math.round(performance.now() - (A.born || 0))), A.id || (A.id = f.bid = ((f.bid || 0) + 1) % 1e6)]), i = Ze.map((A) => [j(A.x), j(A.y), A.kind || "bonus", A.id]), l = Ge.map((A) => [j(A.x), j(A.y), Ve(A.angle), A.color, A.skin | 0, A.cannon | 0, A.hat | 0]), r = (A) => [Ve(A.vx), Ve(A.vy), Ve(A.moveT || 0), A.inventory, Ve(A.ultCd || 0), Ve(A.heat || 0), A.overheated ? 1 : 0, A.lastSeq | 0, A.combo | 0, A.wal ? (oxWalTick(A), oxWalCoins(A)) : null, A.ack || null], h = { t: "s", ts: Math.round(e), tk: o, c: l };
     f.br && (h.st = f.br.phase, h.jn = f.guests.size, h.ex = f.br.expected, C && (h.z = [j(C.x), j(C.y), j(C.r), j(C.nx || 0), j(C.ny || 0), j(C.nr || 0), C.st, C.pi, Ve(C.t)]));
     const c = f.ev;
     f.ev = [];
@@ -3148,7 +3188,7 @@
       }
       f.meNid = e.me, f.walHost = false, f.coinHold = 0, Go(), Ee.length = 0;
       for (const u of e.obst) Ee.push({ x: u[0], y: u[1], r: u[2], seed: u[3] });
-      Bs(), hs(), N.length = 0, Se.length = 0, Ze.length = 0, Ge.length = 0, tt.length = 0, At.clear(), f.snaps = [], f.pred = null, f.hist = [], f.seq = 0, f.stepN = 0, f.steps = [], f.offs = [], f.clockOff = 0, f.delay = 0, p = null, le.classList.add("hidden"), K = true, pt.hidden = false, An(), ue = {}, ee.down = false, f.wasAlive = true, f.lastKills = 0, ca = 0, on = 0, e.br && (ce = "br", be = e.teamSize || 1, f.ranked = true, f.state = "lobby", C = null, document.getElementById("remain").style.display = "block");
+      Bs(), hs(), N.length = 0, Se.length = 0, Ze.length = 0, Ge.length = 0, tt.length = 0, At.clear(), f.snaps = [], f.rt = null, f.pred = null, f.hist = [], f.seq = 0, f.stepN = 0, f.steps = [], f.offs = [], f.clockOff = 0, f.delay = 0, p = null, le.classList.add("hidden"), K = true, pt.hidden = false, An(), ue = {}, ee.down = false, f.wasAlive = true, f.lastKills = 0, ca = 0, on = 0, e.br && (ce = "br", be = e.teamSize || 1, f.ranked = true, f.state = "lobby", C = null, document.getElementById("remain").style.display = "block");
       return;
     }
     if (e.t === "coins") {
@@ -3205,7 +3245,7 @@
       }
       const b = e.tk.find((A) => A[0] === f.meNid);
       if (b && (f.meHost = { x: b[1], y: b[2] }), c.alive) {
-        const A = { x: b[1], y: b[2], vx: d[0], vy: d[1], moveT: d[2] };
+        const k2 = d[10], A = k2 ? { x: k2[0], y: k2[1], vx: k2[2], vy: k2[3], moveT: k2[4] } : { x: b[1], y: b[2], vx: d[0], vy: d[1], moveT: d[2] };
         f.hist = f.hist.filter((M) => M.i > d[7]);
         for (const M of f.hist) Ta(A, M.ax, M.ay, M.dt, null, M.imp);
         if (f.pred) {
@@ -3392,7 +3432,14 @@
     }
     const c = Math.pow(4e-3, e);
     f.off.x *= c, f.off.y *= c;
-    const d = f.snaps, u = t - (f.clockOff || 0), g = u - (f.delay || 100);
+    const d = f.snaps, u = t - (f.clockOff || 0);
+    // Horloge d'affichage lissée : elle avance au rythme réel et se recale doucement (avant : elle sautait
+    // à chaque nouveau réglage du délai / de l'horloge, d'où des micro-saccades des autres tanks et des balles).
+    {
+      const tg = u - (f.delay || 100);
+      f.rt == null || Math.abs(tg - f.rt) > 250 ? f.rt = tg : (f.rt += e * 1e3, f.rt += (tg - f.rt) * Math.min(1, e * 2));
+    }
+    const g = f.rt;
     let b = null, A = null, M = 0;
     for (let y = d.length - 1; y >= 0; y--) if (d[y].ts <= g) {
       b = d[y], A = d[y + 1];

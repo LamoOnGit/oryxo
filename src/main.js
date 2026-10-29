@@ -194,6 +194,90 @@
     if (OXRES.slow > 60) OXRES.cap = Math.max(1, OXRES.cap - 0.25), _a();
     OXRES.n = OXRES.slow = 0;
   }
+
+  // ===== Compteur de performances (F3, ou toucher le badge du ping en haut) =====
+  // 3 familles : ton appareil (images/s), le réseau (ping, régularité), le serveur (calculs/s).
+  // « Copier » met le résumé des 30 dernières secondes dans le presse-papiers.
+  const OXPF = { on: false, el: null, fr: [], dr: [], sn: [], pg: [], sv: [], d0: 0, ui: 0, tk: { n: 0, sum: 0, max: 0, gap: 0, last: 0, t0: 0 } };
+  function oxPerfKeep(a, now, ms) { while (a.length && now - a[0][0] > (ms || 3e4)) a.shift(); }
+  function oxPerfFrame(dt, now) {
+    if (dt > 0 && dt < 1e3) OXPF.fr.push([now, dt]), oxPerfKeep(OXPF.fr, now);
+    OXPF.on && now - OXPF.ui > 250 && (OXPF.ui = now, oxPerfRender(now));
+  }
+  function oxPerfDraw(ms) { OXPF.dr.push([performance.now(), ms]), oxPerfKeep(OXPF.dr, performance.now()); }
+  function oxPerfSnap(now, pf) {
+    const L = OXPF.sn.length ? OXPF.sn[OXPF.sn.length - 1][0] : 0;
+    OXPF.sn.push([now, L ? now - L : 0]), oxPerfKeep(OXPF.sn, now);
+    const pg = f.ping || f.rtt;
+    pg && OXPF.pg.push([now, pg, f.jit || 0]), oxPerfKeep(OXPF.pg, now);
+    pf && (f.pfHost = pf, OXPF.sv.push([now].concat(pf)), oxPerfKeep(OXPF.sv, now));
+  }
+  // côté hôte (serveur ou joueur qui héberge) : calculs par seconde, durée d'un calcul, plus grande pause
+  function oxPerfTick(ms, now) {
+    const k = OXPF.tk;
+    k.last && (k.gap = Math.max(k.gap, now - k.last)), k.last = now, k.n++, k.sum += ms, k.max = Math.max(k.max, ms);
+    if (!k.t0) k.t0 = now;
+    if (now - k.t0 >= 1e3) {
+      f.pfS = [Math.round(k.n * 1e3 / (now - k.t0)), Math.round(k.sum / k.n * 100) / 100, Math.round(k.max * 10) / 10, Math.round(k.gap), f.guests ? f.guests.size : 0];
+      K && !Ke() && (OXPF.sv.push([now].concat(f.pfS)), oxPerfKeep(OXPF.sv, now));
+      k.n = k.sum = k.max = k.gap = 0, k.t0 = now;
+    }
+  }
+  function oxEsTimed(dt, now) { const a = performance.now(); Es(dt); oxPerfTick(performance.now() - a, now); }
+  function oxPerfStats(now, win) {
+    const cut = (a) => a.filter((r) => now - r[0] <= win);
+    const fr = cut(OXPF.fr).map((r) => r[1]).sort((x, y) => x - y), dr = cut(OXPF.dr).map((r) => r[1]), sn = cut(OXPF.sn).map((r) => r[1]).filter((x) => x > 0).sort((x, y) => x - y), pg = cut(OXPF.pg), sv = cut(OXPF.sv);
+    const avg = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0, pct = (a, q) => a.length ? a[Math.min(a.length - 1, Math.floor(a.length * q))] : 0;
+    const online = !!(f.ws && (Ke() || ht && ht()));
+    return {
+      fps: fr.length ? 1e3 / avg(fr) : 0, low: pct(fr, 0.99), worst: fr.length ? fr[fr.length - 1] : 0, slow: fr.filter((x) => x > 33).length, n: fr.length,
+      draw: avg(dr), drawMax: dr.length ? Math.max(...dr) : 0, res: yn,
+      online, guest: Ke(), ping: avg(pg.map((r) => r[1])), pingMax: pg.length ? Math.max(...pg.map((r) => r[1])) : 0, jit: avg(pg.map((r) => r[2])),
+      snaps: sn.length ? 1e3 / avg(sn) : 0, gap: sn.length ? sn[sn.length - 1] : 0, gap95: pct(sn, 0.95), delay: f.delay || 0,
+      tps: sv.length ? Math.min(...sv.map((r) => r[1])) : 0, tpsAvg: avg(sv.map((r) => r[1])), calc: avg(sv.map((r) => r[2])), calcMax: sv.length ? Math.max(...sv.map((r) => r[3])) : 0, pause: sv.length ? Math.max(...sv.map((r) => r[4])) : 0, players: sv.length ? sv[sv.length - 1][5] : 0,
+      buf: Ke() && f.inBuf != null ? f.inBuf : null
+    };
+  }
+  const oxPc = (v, g, o, low) => (low ? v >= g : v <= g) ? "#4be37a" : (low ? v >= o : v <= o) ? "#ffcf4e" : "#ff6b6b";
+  function oxPerfRender(now) {
+    if (!OXPF.el) {
+      const d = OXPF.el = document.createElement("div");
+      d.id = "oxPerf", d.style.cssText = "position:fixed;left:50%;transform:translateX(-50%);top:calc(40px + env(safe-area-inset-top,0px));z-index:60;background:rgba(8,14,38,.88);border:1px solid rgba(120,160,255,.35);border-radius:10px;padding:7px 10px;font:12px/1.45 ui-monospace,Menlo,Consolas,monospace;color:#d9e4ff;width:max-content;max-width:min(760px,calc(100vw - 24px));white-space:normal";
+      d.innerHTML = '<div data-l></div><div style="display:flex;gap:6px;margin-top:5px"><button type="button" data-c style="font:inherit;font-weight:700;background:#2b6cff;color:#fff;border:0;border-radius:6px;padding:3px 8px;cursor:pointer">Copier les chiffres</button><button type="button" data-x style="font:inherit;background:#26305a;color:#d9e4ff;border:0;border-radius:6px;padding:3px 8px;cursor:pointer">Fermer (F3)</button></div>';
+      ["mousedown", "touchstart", "pointerdown"].forEach((ev) => d.addEventListener(ev, (e) => e.stopPropagation(), { passive: true }));
+      d.querySelector("[data-x]").onclick = () => oxPerfToggle(false);
+      d.querySelector("[data-c]").onclick = () => oxPerfCopy(d.querySelector("[data-c]"));
+      document.body.appendChild(d);
+    }
+    OXPF.el.hidden = !K, OXPF.el.style.top = "calc(" + (f.ranked ? 100 : 44) + "px + env(safe-area-inset-top,0px))", OXPF.el.style.fontSize = innerWidth < 700 ? "10.5px" : "12px";
+    const S = oxPerfStats(now, 3e3), b = (c, t) => '<b style="color:' + c + '">' + t + "</b>";
+    const l1 = "Appareil : " + b(oxPc(S.fps, 55, 40, 1), Math.round(S.fps) + " img/s") + " · pire image " + b(oxPc(S.worst, 25, 50), Math.round(S.worst) + " ms") + " · dessin " + b(oxPc(S.draw, 6, 12), S.draw.toFixed(1) + " ms") + " · résolution ×" + S.res;
+    let l2, l3;
+    if (!S.online) l2 = "Réseau : hors ligne (pas de réseau en Entraînement)";
+    else if (!S.guest) l2 = "Réseau : tu héberges la partie (" + (f.guests ? f.guests.size : 0) + " invité(s))";
+    else l2 = "Réseau : ping " + b(oxPc(S.ping, 80, 150), Math.round(S.ping) + " ms") + " · irrégularité " + b(oxPc(S.jit, 15, 40), "±" + Math.round(S.jit) + " ms") + " · positions " + b(oxPc(S.snaps, 27, 20, 1), Math.round(S.snaps) + "/s") + " · plus grand trou " + b(oxPc(S.gap, 70, 130), Math.round(S.gap) + " ms");
+    if (!S.tpsAvg) l3 = "Serveur : en attente des chiffres…";
+    else l3 = (S.guest ? "Serveur : " : "Calcul (ton appareil) : ") + b(oxPc(S.tps, 57, 48, 1), Math.round(S.tps) + " calculs/s") + " · calcul " + b(oxPc(S.calcMax, 8, 16), S.calc.toFixed(1) + " ms (max " + S.calcMax.toFixed(1) + ")") + " · pause max " + b(oxPc(S.pause, 30, 60), S.pause + " ms") + (S.buf != null ? " · réserve " + S.buf + " ms" : "");
+    OXPF.el.querySelector("[data-l]").innerHTML = l1 + "<br>" + l2 + "<br>" + l3;
+  }
+  function oxPerfCopy(btn) {
+    const S = oxPerfStats(performance.now(), 3e4), r = (v, d) => (+v || 0).toFixed(d || 0);
+    const mode = typeof ce !== "undefined" ? ce : "?", where = !S.online ? "hors ligne" : S.guest ? (f.ranked ? "BR classé" : /^A[0-9A-F]+$/.test(f.room || "") ? "Arène" : "room") : "hôte";
+    const txt = "Oryxo perf (30 s, " + mode + ", " + where + ", " + navigator.userAgent.replace(/^Mozilla\/5\.0 /, "").slice(0, 90) + ", écran " + innerWidth + "x" + innerHeight + " ×" + (window.devicePixelRatio || 1) + ")\n" +
+      "Appareil : " + r(S.fps) + " img/s · 1% pires " + r(S.low) + " ms · pire " + r(S.worst) + " ms · images > 33 ms : " + S.slow + "/" + S.n + " · dessin " + r(S.draw, 1) + " ms (max " + r(S.drawMax, 1) + ") · résolution ×" + S.res + "\n" +
+      "Réseau : " + (S.guest ? "ping " + r(S.ping) + " ms (max " + r(S.pingMax) + ") · irrégularité ±" + r(S.jit) + " ms · positions " + r(S.snaps, 1) + "/s · trou max " + r(S.gap) + " ms (95% < " + r(S.gap95) + ") · délai d'affichage " + r(S.delay) + " ms" : S.online ? "tu héberges" : "hors ligne") + "\n" +
+      "Serveur : " + (S.tpsAvg ? r(S.tpsAvg) + " calculs/s (min " + r(S.tps) + ") · calcul " + r(S.calc, 2) + " ms (max " + r(S.calcMax, 1) + ") · pause max " + r(S.pause) + " ms · joueurs " + S.players + (S.buf != null ? " · réserve touches " + S.buf + " ms" : "") : "pas de chiffres");
+    const ok = () => { btn.textContent = "Copié ✓"; setTimeout(() => btn.textContent = "Copier les chiffres", 1500); };
+    try { navigator.clipboard.writeText(txt).then(ok, () => { prompt("Copie ces chiffres :", txt); }); } catch { prompt("Copie ces chiffres :", txt); }
+  }
+  function oxPerfToggle(v) {
+    OXPF.on = v == null ? !OXPF.on : v;
+    try { localStorage.setItem("ox.perf", OXPF.on ? "1" : "0"); } catch {}
+    OXPF.on ? oxPerfRender(performance.now()) : OXPF.el && (OXPF.el.hidden = true);
+  }
+  try { (localStorage.getItem("ox.perf") === "1" || /[?&]perf\b/.test(location.search)) && setTimeout(() => oxPerfToggle(true), 0); } catch {}
+  addEventListener("keydown", (e) => { e.code === "F3" && (e.preventDefault(), oxPerfToggle()); });
+  setTimeout(() => { const nb = document.getElementById("netBadge"); nb && (nb.style.cursor = "pointer", nb.style.pointerEvents = "auto", nb.title = "Afficher les performances", nb.addEventListener("click", () => oxPerfToggle())); }, 0);
   function _a() {
     yn = Math.min(OXRES.cap, window.devicePixelRatio || 1), he = innerWidth, de = innerHeight, ct.width = he * yn, ct.height = de * yn, s.setTransform(yn, 0, 0, yn, 0, 0);
   }
@@ -2307,11 +2391,12 @@
   function Os(e) {
     const t = Math.min(0.05, (e - fs) / 1e3 || 0);
     K && p && le.classList.contains("hidden") && !document.hidden && oxQualityTick(e - fs);
+    K && !document.hidden && oxPerfFrame(e - fs, e);
     if (fs = e, !K || f && f.finished) {
       const n = document.getElementById("specBar");
       n && n.style.display !== "none" && (n.style.display = "none");
     }
-    K && (Ke() ? _l(t) : Es(t)), !window.SERVER_HOST && ((K || Ce.style.display === "none" || le.classList.contains("hidden")) && (tn(), Il(t)), requestAnimationFrame(Os));
+    K && (Ke() ? _l(t) : oxEsTimed(t, e)), !window.SERVER_HOST && ((K || Ce.style.display === "none" || le.classList.contains("hidden")) && (OXPF.d0 = performance.now(), tn(), Il(t), oxPerfDraw(performance.now() - OXPF.d0)), requestAnimationFrame(Os));
   }
   requestAnimationFrame(Os);
   const le = document.getElementById("overlay"), ut = document.getElementById("start"), nn = document.getElementById("dead"), _e = document.getElementById("name"), Ce = document.getElementById("modeSel"), Us = document.getElementById("loading");
@@ -3107,7 +3192,8 @@
       const M = [A.nid, Ve(A.x), Ve(A.y), Math.round(A.angle * 100) / 100, Math.ceil(A.hp), A.alive ? 1 : 0, Ql(A), j(A.guard || 0), Ve(A.guardHit || 0), Ve(A.recoil || 0), j(A.score), A.kills, A._laser && e - A._laser.at < 60 ? [Math.round(A._laser.a * 100) / 100, j(A._laser.end), A._laser.big ? 1 : 0] : 0], P = [A.name, A.color, A.skin | 0, A.cannon | 0, A.hat | 0, A.weapon, (A.powerups || []).join(","), A.cls ? A.cls.id : "", A.team == null ? -1 : A.team, A.deadBy || "", A.isBot ? 1 : 0, A.crown ? 1 : 0], B = JSON.stringify(P), L = M.concat(P);
       n.push(L), o.push(B !== A._nst ? L : M), A._nst = B;
     }
-    const a = Se.map((A) => [j(A.x), j(A.y), j(A.vx), j(A.vy), A.r || Dt, A.color, (A.rocket ? 1 : 0) | (A.boomer ? 2 : 0) | (A.trail ? 4 : 0) | (A.fake ? 8 : 0) | (A.knife ? 16 : 0) | (A.special ? 32 : 0), A.owner && A.owner.nid || 0, Math.min(999, Math.round(performance.now() - (A.born || 0))), A.id || (A.id = f.bid = ((f.bid || 0) + 1) % 1e6)]), i = Ze.map((A) => [j(A.x), j(A.y), A.kind || "bonus", A.id]), l = Ge.map((A) => [j(A.x), j(A.y), Ve(A.angle), A.color, A.skin | 0, A.cannon | 0, A.hat | 0]), r = (A) => [Ve(A.vx), Ve(A.vy), Ve(A.moveT || 0), A.inventory, Ve(A.ultCd || 0), Ve(A.heat || 0), A.overheated ? 1 : 0, A.lastSeq | 0, A.combo | 0, A.wal ? (oxWalTick(A), oxWalCoins(A)) : null, A.ack || null], h = { t: "s", ts: Math.round(e), tk: o, c: l };
+    const a = Se.map((A) => [j(A.x), j(A.y), j(A.vx), j(A.vy), A.r || Dt, A.color, (A.rocket ? 1 : 0) | (A.boomer ? 2 : 0) | (A.trail ? 4 : 0) | (A.fake ? 8 : 0) | (A.knife ? 16 : 0) | (A.special ? 32 : 0), A.owner && A.owner.nid || 0, Math.min(999, Math.round(performance.now() - (A.born || 0))), A.id || (A.id = f.bid = ((f.bid || 0) + 1) % 1e6)]), i = Ze.map((A) => [j(A.x), j(A.y), A.kind || "bonus", A.id]), l = Ge.map((A) => [j(A.x), j(A.y), Ve(A.angle), A.color, A.skin | 0, A.cannon | 0, A.hat | 0]), r = (A) => [Ve(A.vx), Ve(A.vy), Ve(A.moveT || 0), A.inventory, Ve(A.ultCd || 0), Ve(A.heat || 0), A.overheated ? 1 : 0, A.lastSeq | 0, A.combo | 0, A.wal ? (oxWalTick(A), oxWalCoins(A)) : null, A.ack || null, A.remote ? Math.round((A.inBuf || 0) * 1e3) : null], h = { t: "s", ts: Math.round(e), tk: o, c: l };
+    f.pfS && f.pfS !== f.pfSent && (h.pf = f.pfS, f.pfSent = f.pfS);
     f.br && (h.st = f.br.phase, h.jn = f.guests.size, h.ex = f.br.expected, C && (h.z = [j(C.x), j(C.y), j(C.r), j(C.nx || 0), j(C.ny || 0), j(C.nr || 0), C.st, C.pi, Ve(C.t)]));
     const c = f.ev;
     f.ev = [];
@@ -3212,7 +3298,7 @@
     f.clockOff = o;
     const i = Math.min(150, a[Math.floor((a.length - 1) * 0.95)]), l = Math.max(45, Math.min(200, 1e3 / Ln + i + 15));
     for (f.delay = f.delay ? f.delay + (l - f.delay) * 0.05 : l, f.snaps.push({ ts: e.ts, tk: e.tk }); f.snaps.length > 40; ) f.snaps.shift();
-    f.lastSnapTs = e.ts, f.lastSnapAt = t;
+    f.lastSnapTs = e.ts, f.lastSnapAt = t, f.jit = i, oxPerfSnap(t, e.pf);
     const r = /* @__PURE__ */ new Set();
     let h = false;
     for (const u of e.tk) {
@@ -3237,7 +3323,7 @@
     if (c && d) {
       const u = (d[3] || []).join(",") + "|" + Math.ceil(d[4] || 0);
       u !== f.invKey && (f.invKey = u, qe = true), c.inventory = d[3], c.ultCd = d[4], c.heat = d[5], c.overheated = !!d[6], c.combo = d[8];
-      d[9] != null && oxWalFromHost(d[9]);
+      d[9] != null && oxWalFromHost(d[9]), f.inBuf = d[11];
       const g = f.sentAt.get(d[7]);
       if (g) {
         f.rtt = f.rtt ? f.rtt * 0.8 + (t - g) * 0.2 : t - g;
@@ -4670,6 +4756,7 @@
         const d = performance.now();
         Es(c);
         const u = performance.now() - d;
+        oxPerfTick(u, h);
         a += u, u > i && (i = u);
       }
       o++;

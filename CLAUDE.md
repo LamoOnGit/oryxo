@@ -225,3 +225,13 @@ Mesuré avec un BR à 2 joueurs en local (`TEST_LAG=35 TEST_JIT=30`, et `15/3`) 
 - Positions des tanks dans les snapshots au 1/10 de px (`Ve`) au lieu de l'entier.
 - Le joueur envoie ses touches 60×/s (`ba = 60`, avant 30) : paquets plus petits et plus réguliers.
 - Tests : `scratchpad/t7/sbr.js` + `runv.sh` (BR 2 joueurs, mesure écart à la ligne droite et à-coups), `det.js` (hôte = prédiction au 1/100 px).
+
+## Compteur de performances (ajouté le 29/10/2026)
+
+- **F3** en partie (ou clic sur le badge du ping en haut, ou `?perf` dans l'adresse ; mémorisé dans `localStorage ox.perf`) : panneau `#oxPerf` (fonctions `oxPerf…`, données `OXPF`) avec 3 lignes, en vert / orange / rouge :
+  - **Appareil** : images/s, pire image, temps de dessin (`tn`), résolution (`yn`).
+  - **Réseau** (invité seulement) : ping, irrégularité (`f.jit` = 95e centile de l'écart d'arrivée des snapshots), positions reçues /s, plus grand trou entre 2 snapshots.
+  - **Serveur** : calculs/s de l'hôte, durée d'un calcul (moy/max), plus grande pause entre 2 calculs, réserve de touches du joueur chez l'hôte (`n.inBuf`, envoyée en `g[id][11]`). L'hôte mesure avec `oxPerfTick` (dans la boucle `serverhost` et via `oxEsTimed` dans `Os`) et envoie `h.pf = [calculs/s, moy ms, max ms, pause max ms, joueurs]` une fois par seconde dans le snapshot.
+  - **« Copier les chiffres »** : résumé des 30 dernières secondes (mode, navigateur, écran) dans le presse-papiers, à coller dans le chat.
+- Seuils verts : ≥ 55 img/s, pire image ≤ 25 ms, ping ≤ 80 ms, irrégularité ≤ 15 ms, trou ≤ 70 ms, ≥ 57 calculs/s, calcul max ≤ 8 ms, pause ≤ 30 ms.
+- **server.js** : les lignes `perf …` des hôtes (arène et BR) vont dans le journal (`journalctl -u orbit | grep PERF`) et sur **`/stats`**, section « Serveur (VPS) » : processeur (moyenne 1 et 15 min / nombre de cœurs), mémoire, et chiffres de chaque partie en cours.

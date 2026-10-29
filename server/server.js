@@ -178,7 +178,7 @@ async function openArena() {
   try {
     const b = await getBrowser();
     a.page = await hostPage(code, '&mode=arena');
-    a.page.on('pageerror', e => log('arena host error', code, e.message)); a.page.on('console', m => { const x = m.text(); if (/rror/.test(x)) log('HOST', x); });
+    a.page.on('pageerror', e => log('arena host error', code, e.message)); a.page.on('console', m => { const x = m.text(); if (/^perf /.test(x)) perfLine(code, 'arène', x); else if (/rror/.test(x)) log('HOST', x); });
 
     await a.ready;
     if (!a.hostReady) throw new Error('hôte non connecté');
@@ -322,6 +322,7 @@ async function startMatch(mode, group) {
     const page = await hostPage(code, `&mode=${mode}&n=${players.length}`);
     match.page = page;
     page.on('pageerror', e => log('host error', code, e.message));
+    page.on('console', m => { const x = m.text(); if (/^perf /.test(x)) perfLine(code, 'BR ' + mode, x); });
     if (match.hostReady) match.onHostReady();
 
     await ready;
@@ -525,6 +526,21 @@ function statsAuthOk(req) {
   const a = crypto.createHash('sha256').update(given).digest(), b = crypto.createHash('sha256').update(pass).digest();
   return crypto.timingSafeEqual(a, b);
 }
+// performances des parties hébergées par le serveur (lignes « perf » envoyées toutes les 10 s par chaque hôte)
+const PERF = new Map();
+function perfLine(code, kind, x) {
+  PERF.set(code, { kind, x: x.replace(/^perf /, ''), at: Date.now() });
+  for (const [c, v] of PERF) if (Date.now() - v.at > 60000) PERF.delete(c);
+  log('PERF', kind, code, x.replace(/^perf /, ''));
+}
+function serverHealthHtml() {
+  const os = require('os'), la = os.loadavg(), nc = os.cpus().length, mem = 1 - os.freemem() / os.totalmem();
+  const col = (v, g, o) => v <= g ? '#4be37a' : v <= o ? '#ffcf4e' : '#ff6b6b';
+  const rows = [...PERF].filter(([, v]) => Date.now() - v.at < 30000).map(([c, v]) => `<tr><td>${v.kind}</td><td>${c}</td><td>${v.x.replace(/[<>&]/g, '')}</td></tr>`).join('');
+  return `<h2>Serveur (VPS)</h2><div class="g"><div class="c"><b style="color:${col(la[0] / nc, 0.6, 0.9)}">${Math.round(la[0] / nc * 100)} %</b><span>processeur (moyenne 1 min, ${nc} cœurs)</span></div><div class="c"><b>${Math.round(la[2] / nc * 100)} %</b><span>processeur (moyenne 15 min)</span></div><div class="c"><b style="color:${col(mem, 0.75, 0.9)}">${Math.round(mem * 100)} %</b><span>mémoire utilisée</span></div></div>` +
+    `<p class="m">Parties en cours (chiffres des 10 dernières secondes) : il faut ~60 images/s ; « calcul max » sous 16 ms et « pause max » sous 50 ms.</p>` + (rows ? `<table><tr><th>Mode</th><th>Code</th><th>Chiffres</th></tr>${rows}</table>` : '<p class="m">Aucune partie hébergée en ce moment.</p>');
+}
+
 async function statsPage(req, res) {
   if (!process.env.STATS_PASS) { res.writeHead(404); res.end('Not found'); return; }
   if (!statsAuthOk(req)) { res.writeHead(401, { 'WWW-Authenticate': 'Basic realm="Oryxo stats", charset="UTF-8"', 'Content-Type': 'text/plain; charset=utf-8' }); res.end('Mot de passe requis'); return; }
@@ -538,6 +554,7 @@ async function statsPage(req, res) {
 <h1>Oryxo.eu · stats</h1><p class="m">Mis à jour toutes les 15 s · ${t(Date.now())}</p>
 <h2>En ce moment</h2><div class="g">${card(n.playing + n.queued, 'joueurs en ligne')}${card(n.online, 'connectés à leur compte')}${card(n.arena, 'en arène (' + n.arenas + ' arène' + (n.arenas > 1 ? 's' : '') + ')')}${card(n.ranked, 'en BR classé (' + n.matches + ' partie' + (n.matches > 1 ? 's' : '') + ')')}${card(n.priv, 'en room privée (' + n.privRooms + ')')}${card(n.queued, 'en file d\'attente')}</div>
 <p class="m">File d'attente : ${Object.entries(n.q).map(([m, v]) => m + ' ' + v).join(' · ')}</p>
+${serverHealthHtml()}
 <h2>Depuis le dernier redémarrage (${t(STATS.since)})</h2><div class="g">${card(Object.values(STATS.br).reduce((a, b) => a + b, 0), 'parties BR classé')}${card(STATS.arenas, 'arènes ouvertes')}${card(STATS.rooms, 'rooms privées créées')}${card(STATS.peak, 'pic de joueurs' + (STATS.peakAt ? ' (' + t(STATS.peakAt) + ')' : ''))}</div>
 <p class="m">BR par mode : ${br}</p>
 <h2>Comptes et parties (Supabase)</h2>${sb ? `<div class="g">${card(sb.accounts == null ? '?' : sb.accounts, 'comptes')}${card(sb.ranked == null ? '?' : sb.ranked, 'participations au classé (total)')}</div><p class="m">Une participation = un joueur dans une partie classée.</p><table><tr><th>Jour (UTC)</th><th>Participations</th></tr>${days}</table>` : '<p class="m">Supabase non configuré.</p>'}

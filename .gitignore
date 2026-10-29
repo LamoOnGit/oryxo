@@ -4,3 +4,4 @@ dist/test.html
 *.bak
 out/
 deploy.tgz
+server/public/index.html

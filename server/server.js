@@ -25,6 +25,11 @@ const MIN_PLAYERS = Math.max(1, +process.env.MIN_PLAYERS || 2);
 const QUEUE_WAIT = (+process.env.QUEUE_WAIT || 20) * 1000;      // attente max si on n'est pas assez
 const QUEUE_FILL = (+process.env.QUEUE_FILL || 2) * 1000;       // dès qu'il y a assez de joueurs : petite fenêtre pour en accueillir d'autres, puis lancement
 const MAX_PLAYERS = 12;
+// BR classé : des bots seulement quand on cherche SEUL (un joueur, ou un seul groupe d'amis) : la partie part au bout de
+// BOT_WAIT avec des bots jusqu'à 12. Dès que 2 joueurs / groupes différents cherchent : partie entre vrais joueurs, sans bots
+// (règle de Malo, 05/11). BR_BOTS=0 dans .env pour ne jamais mettre de bots.
+const BR_BOTS = process.env.BR_BOTS !== '0';
+const BOT_WAIT = (+process.env.BOT_WAIT || 8) * 1000;   // attente avant de lancer avec des bots si on n'est pas assez
 const ARENA_MAX = Math.max(2, +process.env.ARENA_MAX || 12);
 const HOST_KEY = crypto.randomBytes(24).toString('hex');   // seul l'hôte serveur la connaît
 const PUBLIC = path.join(__dirname, 'public');
@@ -35,7 +40,7 @@ const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
   if (url.pathname === '/health') { res.writeHead(200, { 'Content-Type': 'text/plain' }); res.end('ok'); return; }
-  if (url.pathname === '/status') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ arenas: [...arenas].map(([c, a]) => ({ c, joined: a.joined, closed: a.closed, present: arenaCount(c), now: rooms.get(c) ? rooms.get(c).sessions.size - 1 : 0 })), queues: Object.fromEntries(Object.entries(queues).map(([k, q]) => [k, q.length])), matches: matches.size, ranked: !!(SB_URL && SB_SECRET) })); return; }
+  if (url.pathname === '/status') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ arenas: [...arenas].map(([c, a]) => ({ c, joined: a.joined, closed: a.closed, present: arenaCount(c), now: rooms.get(c) ? rooms.get(c).sessions.size - 1 : 0 })), queues: Object.fromEntries(Object.entries(queues).map(([k, q]) => [k, q.length])), matches: matches.size, ranked: !!(SB_URL && SB_SECRET), social: { version: 3, online: social.size, userFail: SDIAG.userFail, friendsFail: SDIAG.friendsFail, badToken: SDIAG.badToken || 0, last: SDIAG.last, ago: SDIAG.at ? Math.round((Date.now() - SDIAG.at) / 1000) + ' s' : '' } })); return; }
   if (url.pathname === '/stats') { statsPage(req, res); return; }
   // adresses courtes : /cgv -> cgv.html
   let rel = url.pathname === '/' ? 'index.html' : url.pathname;
@@ -51,17 +56,20 @@ const server = http.createServer((req, res) => {
 });
 
 // ---------- Supabase ----------
+// diagnostic des amis (visible sur /status, sans aucun secret) : dernier problème avec Supabase
+const SDIAG = { userFail: 0, friendsFail: 0, last: '', at: 0 };
+function sdiag(k, msg) { SDIAG[k]++; SDIAG.last = msg; SDIAG.at = Date.now(); log('social-diag', msg); }
 async function sbUser(token) {
   if (!SB_URL || !SB_SECRET) return null;
   try {
     const r = await fetch(SB_URL + '/auth/v1/user', { headers: { apikey: SB_SECRET, Authorization: 'Bearer ' + token } });
-    if (!r.ok) return null;
+    if (!r.ok) { if (r.status !== 401 && r.status !== 403) sdiag('userFail', 'auth/v1/user ' + r.status); else SDIAG.badToken = (SDIAG.badToken || 0) + 1; return null; }
     const u = await r.json();
     let p = await fetch(SB_URL + '/rest/v1/profiles?select=username,pr,banned_until,ban_reason&id=eq.' + u.id, { headers: { apikey: SB_SECRET } });
     if (!p.ok) p = await fetch(SB_URL + '/rest/v1/profiles?select=username,pr&id=eq.' + u.id, { headers: { apikey: SB_SECRET } });   // colonnes de ban pas encore créées
     const rows = p.ok ? await p.json() : [], r0 = rows[0] || {};
     return { id: u.id, username: r0.username || 'Joueur', pr: r0.pr || 0, ban: banOf(r0) };
-  } catch (e) { log('sbUser', e.message); return null; }
+  } catch (e) { sdiag('userFail', 'sbUser ' + e.message); return null; }
 }
 // ban en cours ? -> { perm, until, reason } ou null
 function banOf(row) {
@@ -91,7 +99,18 @@ async function sbRecord(userId, mode, placement, kills) {
 const rooms = new Map(); // code -> { sessions: Map(id -> {ws,name,user}), hostId, nextId, match }
 function sys(ws, obj) { if (ws && ws.readyState === 1) ws.send('!|' + JSON.stringify(obj)); }
 const TEST_LAG = +process.env.TEST_LAG || 0, TEST_JIT = +process.env.TEST_JIT || 0;   // test uniquement : simule du ping (0 en production)
-function send(ws, data) { if (!ws || ws.readyState !== 1) return; if (!TEST_LAG) { ws.send(data); return; } const at = Math.max(ws._lagAt || 0, Date.now() + TEST_LAG + Math.random() * TEST_JIT); ws._lagAt = at; setTimeout(() => { if (ws.readyState === 1) ws.send(data); }, at - Date.now()); }
+function send(ws, data) {
+  if (!ws || ws.readyState !== 1) return;
+  if (!TEST_LAG) { ws.send(data); return; }
+  // test uniquement : file par connexion, toujours dans l'ordre (comme une vraie connexion TCP)
+  const at = Math.max(ws._lagAt || 0, Date.now() + TEST_LAG + Math.random() * TEST_JIT); ws._lagAt = at;
+  (ws._lagQ || (ws._lagQ = [])).push([at, data]);
+  if (ws._lagQ.length === 1) lagPump(ws);
+}
+function lagPump(ws) {
+  const q = ws._lagQ; if (!q.length) return;
+  setTimeout(() => { while (q.length && q[0][0] <= Date.now() + 0.5) { const d = q.shift()[1]; if (ws.readyState === 1) ws.send(d); } lagPump(ws); }, Math.max(0, q[0][0] - Date.now()));
+}
 
 const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024, perMessageDeflate: false });
 server.on('upgrade', (req, sock, head) => {
@@ -120,7 +139,7 @@ function onRoom(ws, url, viaArena) {
   else if (!room.hostId) room.hostId = id;
   const isHost = room.hostId === id;
   if (arena && isServerHost) { arena.hostReady = true; arena.onHostReady && arena.onHostReady(); }
-  sys(ws, { t: 'welcome', id, host: isHost, ranked: !!match, arena: !!arena, room: code, mode: match ? match.mode : null, expected: match ? match.players.length : 0 });
+  sys(ws, { t: 'welcome', id, host: isHost, ranked: !!match, arena: !!arena, room: code, mode: match ? match.mode : null, expected: match ? match.players.length : 0, bots: !!(match && match.bots) });
   if (!isHost) { const h = room.sessions.get(room.hostId); if (h) sys(h.ws, { t: 'join', id, name, team: user && user.team != null ? user.team : undefined }); }
   if (isServerHost && match) { match.hostReady = true; match.onHostReady && match.onHostReady(); }
 
@@ -264,19 +283,24 @@ async function onQueue(ws, url) {
 }
 function queueStatus(mode) {
   const q = queues[mode], n = qCount(q);
-  for (const e of q) notifyEntry(e, { t: 'queue', n, max: MAX_PLAYERS, min: MIN_PLAYERS, wait: q.minAt ? Math.max(0, Math.ceil((QUEUE_FILL - (Date.now() - q.minAt)) / 1000)) : -1 });
+  const oldest = q.length ? Math.min(...q.map(e => e.since)) : Date.now();
+  const bots = BR_BOTS && q.length === 1 ? Math.max(0, Math.ceil((BOT_WAIT - (Date.now() - oldest)) / 1000)) : -1;
+  for (const e of q) notifyEntry(e, { t: 'queue', n, max: MAX_PLAYERS, min: MIN_PLAYERS, bots, wait: q.minAt ? Math.max(0, Math.ceil((QUEUE_FILL - (Date.now() - q.minAt)) / 1000)) : -1 });
 }
 setInterval(() => { for (const m of Object.keys(queues)) { queueStatus(m); tryStart(m); } }, 1000);
 
 function tryStart(mode) {
   const q = queues[mode], n = qCount(q);
   if (!q.length) { q.minAt = 0; return; }
-  if (n >= MIN_PLAYERS) { if (!q.minAt) q.minAt = Date.now(); } else q.minAt = 0;
-  if (n >= MAX_PLAYERS || (q.minAt && Date.now() - q.minAt >= QUEUE_FILL)) {
+  // partie entre vrais joueurs : au moins MIN_PLAYERS joueurs ET au moins 2 joueurs / groupes différents
+  if (n >= MIN_PLAYERS && q.length >= 2) { if (!q.minAt) q.minAt = Date.now(); } else q.minAt = 0;
+  // seul dans la file (un joueur ou un seul groupe) : partie avec des bots après BOT_WAIT
+  const botsNow = BR_BOTS && q.length === 1 && Date.now() - q[0].since >= BOT_WAIT;
+  if (n >= MAX_PLAYERS || (q.minAt && Date.now() - q.minAt >= QUEUE_FILL) || botsNow) {
     q.minAt = 0;
     const group = []; let total = 0;
     for (let i = 0; i < q.length;) { const e = q[i]; if (total + e.users.length <= MAX_PLAYERS) { group.push(e); total += e.users.length; q.splice(i, 1); } else i++; }
-    if (group.length) startMatch(mode, group);
+    if (group.length) startMatch(mode, group, botsNow);
   }
 }
 
@@ -303,18 +327,18 @@ async function getBrowser() {
   return browser;
 }
 
-async function startMatch(mode, group) {
+async function startMatch(mode, group, withBots) {
   const code = 'R' + crypto.randomBytes(5).toString('hex').toUpperCase();
   // équipes : les groupes d'amis restent ensemble, les joueurs seuls complètent
   const ts = MODES[mode], teams = [];
   const order = group.slice().sort((a, b) => b.users.length - a.users.length);
   for (const e of order) { let t = teams.findIndex(x => ts - x.length >= e.users.length); if (t < 0) { teams.push([]); t = teams.length - 1; } for (const u of e.users) teams[t].push(u); e.team = t; }
   const players = []; for (const e of group) for (const u of e.users) players.push(Object.assign({}, u, { team: e.team }));
-  const match = { mode, players, tickets: new Map(), hostReady: false, page: null, done: false, started: Date.now() };
+  const match = { mode, players, tickets: new Map(), hostReady: false, page: null, done: false, started: Date.now(), bots: !!(withBots && BR_BOTS) };
   matches.set(code, match); STATS.br[mode] = (STATS.br[mode] || 0) + 1;
   for (const u of players) inGame.set(u.id, code);
   for (const e of group) if (e.party) e.party.entry = null;
-  log('match', code, mode, group.map(e => e.users.map(u => u.username).join('+')).join(', '));
+  log('match', code, mode, group.map(e => e.users.map(u => u.username).join('+')).join(', '), match.bots ? '+ ' + (MAX_PLAYERS - players.length) + ' bots' : '(sans bots)');
   for (const e of group) notifyEntry(e, { t: 'found', n: players.length });
   for (const u of players) pushPresence(u.id);
   try {
@@ -355,14 +379,14 @@ async function sbFriends(uid) {
   if (!SB_URL || !SB_SECRET || !UUID_RE.test(uid)) return new Set();
   try {
     const r = await fetch(SB_URL + '/rest/v1/friendships?select=requester,addressee&status=eq.accepted&or=(requester.eq.' + uid + ',addressee.eq.' + uid + ')', { headers: { apikey: SB_SECRET } });
-    if (!r.ok) { log('friends error', r.status); return new Set(); }
+    if (!r.ok) { sdiag('friendsFail', 'friendships ' + r.status + ' ' + (await r.text().catch(() => '')).slice(0, 120)); const e = new Set(); e.err = 1; return e; }
     const rows = await r.json();
     return new Set(rows.map(x => x.requester === uid ? x.addressee : x.requester));
-  } catch (e) { log('sbFriends', e.message); return new Set(); }
+  } catch (e) { sdiag('friendsFail', 'sbFriends ' + e.message); const r = new Set(); r.err = 1; return r; }
 }
 function ssend(uid, obj) { const s = social.get(uid); if (s) for (const w of s.ws) sys(w, obj); }
 function inQueue(uid) { for (const q of Object.values(queues)) for (const e of q) if (e.users.some(u => u.id === uid)) return true; return false; }
-function ustatus(uid) { if (inGame.has(uid)) return 'game'; if (inQueue(uid)) return 'queue'; return social.has(uid) ? 'online' : 'offline'; }
+function ustatus(uid) { if (inGame.has(uid)) return 'game'; if (inQueue(uid)) return 'queue'; const s = social.get(uid); return s ? (s.play ? 'play' : 'online') : 'offline'; }   // play = en partie hors classé (Arène, room, Entraînement)
 function pushPresence(uid) { const st = ustatus(uid); for (const [, s] of social) if (s.friends.has(uid)) for (const w of s.ws) sys(w, { t: 'presence', id: uid, st }); }
 function partyState(p) {
   const msg = p ? { t: 'party', id: p.id, leader: p.leader, mode: p.mode, members: p.members.map(id => { const s = social.get(id); return { id, username: s ? s.user.username : 'Joueur', pr: s ? s.user.pr : 0 }; }) } : { t: 'party', id: null };
@@ -385,7 +409,7 @@ function leaveParty(uid, quiet) {
 }
 async function onSocial(ws, url) {
   const user = await sbUser(url.searchParams.get('token') || '');
-  if (!user) { sys(ws, { t: 'error', msg: 'auth' }); ws.close(4001, 'auth'); return; }
+  if (!user) { sys(ws, { t: 'error', msg: 'auth', why: SB_URL && SB_SECRET ? (SDIAG.last || 'jeton refusé') : 'Supabase non configuré sur le serveur' }); ws.close(4001, 'auth'); return; }
   if (user.ban) { sys(ws, { t: 'banned', msg: banMsg(user.ban), perm: user.ban.perm, until: user.ban.until, reason: user.ban.reason }); ws.close(4005, 'ban'); return; }
   ws.isAlive = true; ws.on('pong', () => { ws.isAlive = true; });
   let s = social.get(user.id);
@@ -393,7 +417,7 @@ async function onSocial(ws, url) {
   s.user = user; s.ws.add(ws);
   s.friends = await sbFriends(user.id);
   const pres = {}; for (const f of s.friends) pres[f] = ustatus(f);
-  sys(ws, { t: 'hello', me: user.id, presences: pres });
+  sys(ws, { t: 'hello', me: user.id, presences: pres, ferr: s.friends.err ? 1 : 0 });
   if (s.party) sys(ws, partyState(parties.get(s.party)));
   pushPresence(user.id);
   ws.on('message', async raw => {
@@ -437,6 +461,7 @@ async function onSocial(ws, url) {
       const p = parties.get(String(m.party || '')); if (!p) return;
       p.invites.delete(user.id); ssend(p.leader, { t: 'toast', msg: user.username + ' a refusé ton invitation.' }); return;
     }
+    if (m.t === 'st') { const v = !!m.play; if (s.play !== v) { s.play = v; pushPresence(user.id); } return; }
     if (m.t === 'leave') { leaveParty(user.id); return; }
     if (m.t === 'mode') {
       const p = s.party ? parties.get(s.party) : null; if (!p || p.leader !== user.id || !MODES[m.mode] || m.mode === 'solo') return;

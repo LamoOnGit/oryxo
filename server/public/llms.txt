@@ -10,7 +10,7 @@
 - Adresse : https://oryxo.eu/
 
 ## Modes de jeu
-- Battle Royale classé : jusqu'à 12 vrais joueurs (aucun bot), en solo, duo, trio ou squad ; la zone se resserre, le dernier joueur ou la dernière équipe debout gagne ; les résultats font gagner ou perdre des PR.
+- Battle Royale classé : jusqu'à 12 joueurs (des bots complètent seulement quand on cherche seul ; à partir de 2 vrais joueurs, aucun bot), en solo, duo, trio ou squad ; la zone se resserre, le dernier joueur ou la dernière équipe debout gagne ; les résultats font gagner ou perdre des PR.
 - Arène : arène en ligne de 12 joueurs avec réapparition infinie.
 - Multijoueur entre amis : rooms privées avec un code à partager.
 - Entraînement : jeu libre, arène ou Battle Royale contre des bots.

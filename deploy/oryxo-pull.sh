@@ -27,9 +27,15 @@ SERVER=$SRC/server/server.js
 if ! { [ -s "$GAME" ] && [ -s "$SERVER" ] && grep -qi '<html' "$GAME"; }; then
   echo "Fichiers manquants dans GitHub, rien n'est changé."; echo "$NEW" > "$MARK"; exit 1
 fi
-NODE=$(command -v node || echo /usr/bin/node)
-if ! "$NODE" --check "$SERVER"; then
-  echo "server.js a une erreur, rien n'est changé."; echo "$NEW" > "$MARK"; exit 1
+# le même Node que le service orbit (sinon celui du PATH) ; s'il est introuvable, on saute ce contrôle (/health protège quand même)
+NODE=$(systemctl show -p ExecStart orbit 2>/dev/null | grep -o 'path=[^ ;]*' | head -1 | cut -d= -f2)
+case "$NODE" in */node*) ;; *) NODE=$(command -v node || true) ;; esac
+if [ -n "$NODE" ] && [ -x "$NODE" ]; then
+  if ! "$NODE" --check "$SERVER"; then
+    echo "server.js a une erreur, rien n'est changé."; echo "$NEW" > "$MARK"; exit 1
+  fi
+else
+  echo "Node introuvable pour vérifier server.js : contrôle sauté."
 fi
 
 cp -a "$APP/public/index.html" "$APP/public/index.html.bak"
